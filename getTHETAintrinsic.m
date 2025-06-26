@@ -62,7 +62,7 @@ function [thi,thf,thr,t500,c500,f500] = getTHETAintrinsic(pspt,t500,c500)
     % data from when animals were active (moving their heads at >3 cm/s) as described above (see Behavioral analysis) and by 
     % only fitting cells with at least 100 spikes available. Examples of the fit output can be seen in Figures 3 and 4.
     if ~exist('t500','var') || isempty(t500) || ~exist('c500','var') || isempty(c500) % if a spike autocorrelogram was not provided, make one
-        [c500,t500] = spike_auto(pspt,'win_size',500,'bin_size',10);
+        [c500,t500,e] = spike_auto(pspt,'spt2',pspt,'bin_size',10,'win_size',500,'method','correlogram','log',0);
         f500 = NaN(size(t500));
     end
     if numel(pspt)<100 || isempty(pspt) || ~any(c500)

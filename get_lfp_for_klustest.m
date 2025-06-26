@@ -49,6 +49,50 @@ if ~exist('tstart','var') || isempty(tstart) || all(isnan(tstart))
 end
 
 switch dataformat
+    case {'kwiktint'}
+        lfpt = [];
+        lfp = [];
+        % lfp_channel = 1;
+        total_duration = 0;
+
+        for ff = 1:length(data_dirs) % for every data directory  
+            [~,b,~] = fileparts(data_dirs{ff});          
+            fname_eeg = [b '\' b '.eeg']; % the file name 
+            % fname_egf = [b '\' b '.egf']; % the file name 
+
+            if ds
+                [lfp_now,t_now,lfp_srate,lfp_h,~] = get_lfp_volts(fname_eeg,'ds',ds);
+            else
+                [lfp_now,t_now,lfp_srate,lfp_h,~] = get_lfp_volts(fname_eeg);
+            end      
+            t_now = t_now+total_duration;
+            total_duration = total_duration + lfp_h.duration;
+
+            % concatenate
+            lfpt = [lfpt(:); t_now(:)]; % convert microseconds to seconds and concatenate
+            lfp = [lfp(:); lfp_now(:)]; % concatenate amplitudes
+        end
+        lfpt = lfpt - tstart;
+
+        % filter LFP to get theta and calculate theta phase
+        [b,a] = butter(2,[6 12]/(lfp_srate/2)); % Generate 4th order butterworth filter coefficients for theta band [6 12] Hz
+        lftheta = filtfilt(b,a,lfp); % Apply filter to data using zero-phase filtering  
+        h = hilbert(lftheta); % hilbert transform of the theta signal
+        theta_phase = mod(angle(h),2*pi); % get the phase of theta
+        theta_power = abs(h); % get the amplitude of theta (theta power) this is not normalized
+        
+        dat = [lfp(:) lfpt(:) theta_phase(:) theta_power(:)];
+        
+
+
+
+
+
+
+
+
+
+
     case {'Neuralynx'}
         lfpt = [];
         lfp = [];

@@ -60,12 +60,11 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                 disp(sprintf('\t\t loading'))
                 switch dataformat
                     case {'kwiktint'}
-                        [~,b,~] = fileparts(data_dirs{ff});
+                        [a,b,c] = fileparts(data_dirs{ff});
                         h = get_dacq_headers([b '\' b '.pos']);
+                        total_duration = total_duration + h.duration;
   
                         [led_pos,potn,~] = read_rawpos([b '\' b '.pos'],2);
-                        potn = potn + total_duration;
-                        total_duration = total_duration + h.duration;
 
                         % extract the coloured LED points
                         nsamps = numel(potn);    
@@ -73,9 +72,24 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                         tdata(:,1:2) = [led_pos(:,1,1) led_pos(:,1,2)];
                         tdata(:,3:4) = [led_pos(:,2,1) led_pos(:,2,2)];
 
+
+        trial_samps(pp) = length(led_pos(:,1,1));
+
+        pos.led_pos = [pos.led_pos; single(led_pos)];
+        pos.led_pix = [pos.led_pix; uint8(led_pix)];
+        ts = post + total_duration;
+        pos.ts = [pos.ts; single(ts)];
+        pos.trial_duration = trial_duration; % in seconds...
+        pos.trial_samples = trial_samps; % number of samples per session (important for rectifying stray position data in 3D tracking)
+
+        pos.total_duration = total_duration;
+
+
+
+                        keyboard
                     case {'kwikcut','neuralynx'}
-                        [~,b,~] = fileparts(data_dirs{ff});
-                        [potn, ~, ~, ~, targets, ~, ~] = Nlx2MatVT([b '\VT1.nvt'], [1 1 1 1 1 1], 1, 1, [] );  
+                        [a,b,c] = fileparts(data_dirs{ff});
+                        [potn, poxn, poyn, pohn0, targets, ~, ~] = Nlx2MatVT([b '\VT1.nvt'], [1 1 1 1 1 1], 1, 1, [] );  
                         potn = potn / 1e6; % convert microseconds to seconds
                         
                         % extract the coloured LED points
@@ -152,7 +166,7 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                     jumps = logical(movmax(zs>mapset.jumpcut,mapset.jumpwindow,'omitnan','Endpoints','shrink')); % smooth this logical vector to try and catch both sides of every jump
                     tdata2(jumps,cindx(tt,1)) = NaN;
                     tdata2(jumps,cindx(tt,2)) = NaN;
-                    disp(sprintf('\b (%.2f%% discarded)', sum(jumps)/numel(potn)))                
+                    disp(sprintf('\b (%.2f%% discarded)', sum(jumps)/numel(poxn)))                
     
                     % smooth position data using smoothn algorithm (also interpolates NaNs)
                     disp(sprintf('\b | smothing'))                        

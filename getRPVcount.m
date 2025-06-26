@@ -45,7 +45,7 @@ tau_c = 0.75; % lockout period of recording system in ms
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% FUNCTION BODY
     if ~exist('t25','var') || isempty(t25) || ~exist('c25','var') || isempty(c25) % if a spike autocorrelogram was not provided, make one
-        [c25,t25] = spike_auto(pspt,'win_size',25,'bin_size',0.5);
+        [c25,t25,e] = spike_auto(pspt,'spt2',pspt,'bin_size',0.5,'win_size',25,'method','correlogram','log',0);
     end
 
     % refractory period violation analyses

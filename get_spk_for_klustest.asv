@@ -56,28 +56,43 @@ switch dataformat
                 [~,b,~] = fileparts(data_dirs{ff});          
                 fname = [b '\' b '.' num2str(tets(tt,1))]; % the file name                
 
-                [spt,ch1,ch2,ch3,ch4,set_h] = get_spikes_volts(fname);
-                h = get_dacq_headers(fname); % sometimes the setfile doesn't contain the duration
+                [spt,c1,c2,c3,c4] = getspikes(fname);    
                 spt = spt+total_duration;
+
+                h = get_dacq_headers(fname);
                 total_duration = total_duration + h.duration;
+                spt = spt - tstart; % rezero to start of first recording
                 all_spt = [all_spt; spt(:)];
 
-                % waveforms
-                spikes = permute(cat(3,ch1,ch2,ch3,ch4),[2 3 1]); % samps x channels x spikes
+
+keyboard
+
+
+                if electrode_type==0 % tetrode
+                    fname = [b '\TT' num2str(tets(tt,1)) '.ntt']; % the file name                
+                elseif electrode_type==1 % stereotrode
+                    fname = [b '\ST' num2str(tets(tt,1)) '.nst']; % the file name                                
+                end
+                [spt,spikes,h] = Nlx2MatSpike(fname,[1 0 0 0 1],1,1,1);                 
+                spt = ( spt / 1e6 ) - tstart; % convert from microseconds to seconds, then rezero to start of first recording
+                all_spt = [all_spt; spt(:)];
+                
+                adbv_idx = contains(h,{'ADBitVolts'}); % find the ADBitVolts entry
+                adbv_txt = h{adbv_idx}(13:end); % extract the number part of the text
+                adbv = str2double(strsplit(adbv_txt)); % split and convert to double
+                spikes = spikes .* adbv .* 10^6; % convert spike AD to volts, then to microvolts
                 all_wav = cat(3,all_wav,spikes);
             end
-            spk{tt} = all_spt - tstart;
+            spk{tt} = all_spt;
             wav{tt} = all_wav;
-            % wavtime = (( 1:size(spikes,1) ) -8 ) * (1/spk_srate) * 1e03;
-            wavtime = linspace(0,1000,50)-200;
-            % From the dacqUSB manual (pp 40)
-            % In single unit mode, the system records only a 1 ms threshold-triggered "window" 
-            % of samples for each spike (data stored for 200 s pre- and 800 s post-threshold), 
-            % along with a timestamp indicating when the spike occurred relative to the beginning 
-            % of the trial.
+            wavtime = (( 1:size(spikes,1) ) -8 ) * (1/spk_srate) * 1e03;
 
             disp(sprintf('\t\t...%d spikes %s',numel(all_spt)))
         end              
+
+
+
+
 
     case {'kwikcut'}    
         spk_srate = 32e3;

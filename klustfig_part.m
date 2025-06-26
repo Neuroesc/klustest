@@ -49,14 +49,22 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
     colormap(jet(256)); % to make sure the colormap is not the horrible default one
     fsiz = 8; % the fontsize for different texts
     flnw = 0.5; % the line width for different plots
-% set(gcf,'visible','on')
+
     % add an annotation to the figure with some important info
     part_now = pdata.part_config.part_names{pp};
     tet_now = sdata.tetrode(1);
     clu_now = sdata.cluster(1);    
     ann_str = sprintf('Cell: %s, Part: %s, Analysed: %s',sdata.uci{1},part_now,datestr(now,'yyyy-mm-dd-HH-MM-SS'));
-    annotation('textbox',[0, 1, 1, 0],'string',ann_str,'FontSize',8,'LineStyle','none','interpreter','none');  
+    annotation('textbox',[0, 1, 1, 0],'string',ann_str,'FontSize',8,'LineStyle','none','interpreter','none','Color','k');  
     
+    % default figure colors
+    set(groot, 'defaultAxesColor', 'white'); % Set default axis background color to white
+    set(groot, 'defaultAxesXColor', 'black'); % Set default axis line color to black
+    set(groot, 'defaultAxesYColor', 'black'); % Set default axis line color to black
+    set(groot, 'defaultAxesZColor', 'black'); % Set default axis line color to black
+    set(groot, 'defaultTextColor', 'black'); % Set default font color for axes text to black
+    set(gcf,"DefaultTextColor",[0 0 0])
+
     % settings
     max_plot_waves = 250; % set to 0 to show all waveforms
     max_plot_fets = 1e5; % set to 0 to show all feature points in feature space
@@ -105,7 +113,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
         end
         daspect([1 1 1])
         axis xy off tight
-        text(0,1.1,sprintf('%d spikes (%.2f Hz), %d seconds (%.1f mins)',numel(pspx),numel(pspx)/part_duration,round(part_duration),part_duration/60),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
+        text(0,1.1,sprintf('%d spikes (%.2f Hz), %d seconds (%.1f mins)',numel(pspx),numel(pspx)/part_duration,round(part_duration),part_duration/60),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left','Color','k')
         
 %% >>>>>>>>>> Firing rate map       
     axrt = axes('Units','pixels','Position',[axps.Position(1) axps.Position(2)-axps.Position(4)-55 axps.Position(3) axps.Position(4)]);
@@ -116,7 +124,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
 
         im = imagesc(ratemap,'alphadata',~isnan(ratemap));
         daspect([1 1 1])
-        clim(double([0 max([0.1 max(ratemap(:),[],'omitnan')])]))       
+        axrt.CLim = double([0 max([0.1 max(ratemap(:),[],'omitnan')])]);  
         colormap(axrt,turbo);
         axis xy off
         set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz);   
@@ -131,17 +139,17 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
         if sshuff % spatial shuffles were performed
             spatiz = sdata.spatial_info_z(1);
             spatip = sdata.spatial_info_p(1);
-            text(0,1.05,sprintf('SI: %.2f (z %.2f,p %.3f), Sp: %.2f, Cohe: %.2f',spati,spatiz,spatip,spars,coher),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
+            text(0,1.05,sprintf('SI: %.2f (z %.2f,p %.3f), Sp: %.2f, Cohe: %.2f',spati,spatiz,spatip,spars,coher),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left','Color','k')
         else
-            text(0,1.05,sprintf('SI: %.2f, Sp: %.2f, Cohe: %.2f',spati,spars,coher),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
+            text(0,1.05,sprintf('SI: %.2f, Sp: %.2f, Cohe: %.2f',spati,spars,coher),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left','Color','k')
         end
 
         axp = get(gca,'Position');
         cc = colorbar;
         set(gca,'Position',axp);
         set(cc,'Position',get(cc,'Position')+[0 0 -0.004 0])
-        title(cc,'Hz','FontSize',fsiz)        
-        set(cc,'yticklabel',num2str(get(cc,'ytick')','%.1f')) % change Ytick labels to have the same number of decimal places
+        title(cc,'Hz','FontSize',fsiz,'Color','k')        
+        set(cc,'yticklabel',num2str(get(cc,'ytick')','%.1f'),'Color','k') % change Ytick labels to have the same number of decimal places
         
 %% >>>>>>>>>> Grid autocorrelogram              
     axgs = axes('Units','pixels','Position',[axrt.Position(1) axrt.Position(2)-axrt.Position(4)-55 axrt.Position(3) axrt.Position(4)]);
@@ -152,7 +160,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
         
         imc = imagesc(amap,'alphadata',~isnan(amap));
         daspect([1 1 1])
-        clim(double([-0.2 1]))
+        axgs.CLim = double([-0.2 1]);
         colormap(axgs,hot);        
         axis xy off
         set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz); 
@@ -167,17 +175,17 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
         if sshuff % spatial shuffles were performed
             gridz = sdata.spatial_info_z(2);
             gridp = sdata.spatial_info_p(2);
-            text(0,1.05,sprintf('G: %.2f (z %.2f,p %.3f), W: %.2f, O: %.2f',gscore,gridz,gridp,gspacing,gori),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')        
+            text(0,1.05,sprintf('G: %.2f (z %.2f,p %.3f), W: %.2f, O: %.2f',gscore,gridz,gridp,gspacing,gori),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left','Color','k')        
         else
-            text(0,1.05,sprintf('G: %.2f, W: %.2f, O: %.2f',gscore,gspacing,gori),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')        
+            text(0,1.05,sprintf('G: %.2f, W: %.2f, O: %.2f',gscore,gspacing,gori),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left','Color','k')        
         end
 
         axp = get(gca,'Position');
         cc = colorbar;
         set(gca,'Position',axp);
         set(cc,'Position',get(cc,'Position')+[0 0 -0.004 0])
-        title(cc,'Hz','FontSize',fsiz)        
-        set(cc,'yticklabel',num2str(get(cc,'ytick')','%.1f')) % change Ytick labels to have the same number of decimal places
+        title(cc,'Hz','FontSize',fsiz,'Color','k')        
+        set(cc,'yticklabel',num2str(get(cc,'ytick')','%.1f'),'Color','k') % change Ytick labels to have the same number of decimal places
                 
 %% >>>>>>>>>> Waveforms            
     axwav = axes('Units','pixels','Position',[axps.Position(1)+axps.Position(3)+80 axps.Position(2) 200 axps.Position(4)]);
@@ -217,18 +225,17 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
         [hl,hp] = boundedline(wavtime,wav_means(widx(1),:),wav_stds(widx(1),:),'-k');
         set(hl,'Color','r','LineStyle','-','LineWidth',1); 
         set(hp,'FaceColor','b','FaceAlpha',.5);     
-        ax = gca;
         
-        ax.XLim = mapset.wave_window;
-        ax.YLim = ax_lim;
-        ax.YDir = 'normal';
+        axwav.XLim = mapset.wave_window.*1e3;
+        axwav.YLim = ax_lim;
+        axwav.YDir = 'normal';
         box on
         grid on
-        xlabel('Time (ms)')
-        ylabel(sprintf('Amplitude (%cV)',char(956)))
-        text(1,1.05,sprintf('Ch%d, Peak: %.1f%cV, Width: %.2fms',widx(1),mxs(widx(1)),char(956),sdata.wave_width),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','right')
+        xlabel('Time (us)')
+        ylabel(sprintf('Amplitude (%cV)',char(956)),'Color','k')
+        text(1,1.05,sprintf('Ch%d, Peak: %.1f%cV, Width: %.2fms',widx(1),mxs(widx(1)),char(956),sdata.wave_width),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','right','Color','k')
         if max_plot_waves>0 % if we want to limit the number of waveforms shown
-            text(0.99,1,sprintf('N = %d',max_plot_waves_now),'Units','normalized','FontSize',8,'HorizontalAlignment','right','VerticalAl','top')           
+            text(0.99,1,sprintf('N = %d',max_plot_waves_now),'Units','normalized','FontSize',8,'HorizontalAlignment','right','VerticalAl','top','Color','k')           
         end
 
         % plot all 4 waveforms in smaller plots
@@ -253,7 +260,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
                 set(hl,'Color','r','LineStyle','-','LineWidth',1); 
                 set(hp,'FaceColor','b','FaceAlpha',.5);  
                 ax = gca;
-                ax.XLim = mapset.wave_window;
+                ax.XLim = mapset.wave_window.*1e3;
                 ax.YLim = ax_lim;
                 ax.XTick = [];
                 ax.YTick = [];
@@ -263,7 +270,8 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
                 set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz);   
                 text(-0.2,0.5,sprintf('Ch%d',ww),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','center','rotation',90)                
         end          
-        
+        % keyboard
+
 %% >>>>>>>>>> Isolation quality
         axiso = axes('Units','pixels','Position',[axwav.Position(1)+20 axwav.Position(2)-axwav.Position(4)-55 axwav.Position(3)+30 axwav.Position(4)]);
             dists = double(quals{tet_now}{clu_now});
@@ -295,45 +303,63 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
 %% >>>>>>>>>> Feature space
         axfet = axes('Units','pixels','Position',[axiso.Position(1) axiso.Position(2)-axiso.Position(4)-55 axiso.Position(3) axiso.Position(4)]);
             clu = pdata.clusters{tet_now};
-            fet = fets{tet_now};
+            fet = double(fets{tet_now});
             maxwavs = max(sdata.wave_mean{1},[],2);
             [~,dindx] = sort(maxwavs,1,'descend'); % find the order of these values
             nch = sum(~cell2mat(cellfun(@isempty,wav_now,'UniformOutput',false)));
 
             nfets = (size(fet,2))/nch;            
             start_cols = 1:nfets:nfets*nch; % the starting column for each channel    
-            fet_to_plot = 4;
+            fet_to_plot = 1;
             % get the feature data for the two max channels
             d1 = fet(:,start_cols(dindx(1))+(fet_to_plot-1)); % get this feature data for this channel
             d2 = fet(:,start_cols(dindx(2))+(fet_to_plot-1)); % get this feature data for this channel
 
-            % downsample feature space
-            if max_plot_fets>0 % if we want to limit the number of feature space points shown
-                max_plot_fets_now = min([size(d1,1) max_plot_fets]); % if there are less than max_plot_fets points, plot them all
-                rindx = randi(size(d1,1),[max_plot_fets_now,1]);
-                d1 = d1(rindx,:);
-                d2 = d2(rindx,:);
-                clu = clu(rindx);
-            end            
-            
-            % plot the clusters    
-            cols = winter(double(max(clu)));
-            for cc = 1:max(clu)
-                if cc==clu_now % skip the current cluster because we want to do that last & in black
-                    continue
-                end
-                plot(d1(clu==cc),d2(clu==cc),'.','MarkerSize',4,'color',cols(cc,:)); hold on; % plot the clusters
-            end
-            plot(d1(clu==clu_now),d2(clu==clu_now),'.','MarkerSize',6,'color','k'); % re-plot the current cluster in red to make sure it is on top and stands out
+            xblim = [min(d1,[],"all"),max(d1,[],"all")];
+            yblim = [min(d2,[],"all"),max(d2,[],"all")];      
+            res = 128;
+            xedg = linspace(xblim(1),xblim(2),res+1);
+            yedg = linspace(yblim(1),yblim(2),res+1);      
+            f_noise = histcounts2(d2,d1,yedg,xedg,'Normalization','count');
+            f_clu = histcounts2(d2(clu==clu_now),d1(clu==clu_now),yedg,xedg,'Normalization','count');
+    
+            f_all = NaN(size(f_noise));
+            f_all(f_noise>0) = 0;
+            f_all(f_clu>0) = 1;
+            imagesc(f_all,'AlphaData',~isnan(f_all));
+    
+            axfet.Colormap = [0 0 0;1 0 0];
+            axfet.CLim = [0 1];
+
+            % keyboard
+            % % downsample feature space
+            % if max_plot_fets>0 % if we want to limit the number of feature space points shown
+            %     max_plot_fets_now = min([size(d1,1) max_plot_fets]); % if there are less than max_plot_fets points, plot them all
+            %     rindx = randi(size(d1,1),[max_plot_fets_now,1]);
+            %     d1 = d1(rindx,:);
+            %     d2 = d2(rindx,:);
+            %     clu = clu(rindx);
+            % end            
+            % 
+            % % plot the clusters    
+            % cols = winter(double(max(clu)));
+            % for cc = 1:max(clu)
+            %     if cc==clu_now % skip the current cluster because we want to do that last & in black
+            %         continue
+            %     end
+            %     plot(d1(clu==cc),d2(clu==cc),'.','MarkerSize',4,'color',cols(cc,:)); hold on; % plot the clusters
+            % end
+            % plot(d1(clu==clu_now),d2(clu==clu_now),'.','MarkerSize',6,'color','k'); % re-plot the current cluster in red to make sure it is on top and stands out
 
             axis tight
             xlabel(sprintf('Fet1 Ch%d',dindx(1)))
             ylabel(sprintf('Fet1 Ch%d',dindx(2)))              
             grid on            
-            if max_plot_fets>0 % if we want to limit the number of waveforms shown
-                text(0.99,1,sprintf('N = %d',max_plot_fets_now),'Units','normalized','FontSize',8,'HorizontalAlignment','right','VerticalAl','top')           
-            end
-        
+            % if max_plot_fets>0 % if we want to limit the number of waveforms shown
+            %     text(0.99,1,sprintf('N = %d',max_plot_fets_now),'Units','normalized','FontSize',8,'HorizontalAlignment','right','VerticalAl','top')           
+            % end
+            % set(gcf,'visible','on'); keyboard
+
 %% >>>>>>>>>> Head direction
         axhd = axes('Units','pixels','Position',[axwav.Position(1)+axwav.Position(3)+120 axwav.Position(2)+45 axwav.Position(3) axwav.Position(4)-45]);
             ai = rad2deg(linspace(0,2*pi,pdata.mapset.hd_bins)'); % angles for binning   
@@ -385,42 +411,70 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
             p1 = polarplot(theta,dwellmap_to_plot,'b'); hold on;            
             axhd2.ThetaZeroLocation = 'right';
 
-            fname = 'C:\Users\F004KS7\Downloads\image.png';
-            exportgraphics(gcf,fname,'BackgroundColor',[1 1 1],'Colorspace','rgb','Resolution',250);  
+            axhd2.Color = 'white';
+            axhd2.GridColor = 'black'; % Change grid line color to black
+            axhd2.ThetaColor = 'black'; % Change theta axis color to black
+            axhd2.RColor = 'black'; % Change r axis color to black
 
 %% >>>>>>>>>> HD half plots
-        axav = axes('Units','pixels','Position',[axhd2.Position(1) axhd2.Position(2)-axhd2.Position(4)-70 axhd2.Position(3) axhd2.Position(4)]);
+        axav1 = axes('Units','pixels','Position',[axhd2.Position(1) axhd2.Position(2)-axhd2.Position(4)+30 axhd2.Position(3) 100]);
             ai = rad2deg(linspace(0,2*pi,pdata.mapset.hd_bins)'); % angles for binning   
             hd_ratemap1 = sdata.hd_ratemap_half{1};
             hd_ratemap2 = sdata.hd_ratemap_half{2};
 
             % plot the data as a linear (side on) graph
             a1 = area(ai,hd_ratemap1,'FaceColor','k','FaceAlpha',.75,'EdgeColor','none'); hold on;
-            a2 = area(ai,hd_ratemap2,'FaceColor','b','FaceAlpha',.75,'EdgeColor','none'); hold on;            
-            ylabel('Firing Rate (Hz)')        
 
             ax = gca;
             ax.XLim = [min(ai) max(ai)];
             ax.XTick = [0:90:360]; 
             ax.XTickLabel = {};
-            text(0,1.05,sprintf('r: %.2f, PFD%c: %.2f | r: %.2f, PFD%c: %.2f',sdata.hd_info_half(1),176,sdata.hd_info_half(2),sdata.hd_info_half(5),176,sdata.hd_info_half(6)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
+            text(0,1.05,sprintf('r: %.2f, PFD%c: %.2f',sdata.hd_info_half(1),176,sdata.hd_info_half(2)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
             ax.YLim = [0 max([0.1 max(hd_ratemap1(:),[],'omitnan') max(hd_ratemap2(:),[],'omitnan')]) ].*1.1;
             line([sdata.hd_info_half(2) sdata.hd_info_half(2)],ax.YLim,'Color','k')
+            % line([sdata.hd_info_half(6) sdata.hd_info_half(6)],ax.YLim,'Color','b')
+            set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz);       
+            grid on;
+            set(gca,'yticklabel',num2str(get(gca,'ytick')','%.1f'))   
+            ylabel('Firing Rate (Hz)')        
+
+        axav2 = axes('Units','pixels','Position',[axav1.Position(1) axav1.Position(2)-axav1.Position(4)-15 axav1.Position(3) axav1.Position(4)]);
+            a2 = area(ai,hd_ratemap2,'FaceColor','b','FaceAlpha',.75,'EdgeColor','none'); hold on;            
+
+            ax = gca;
+            ax.XLim = [min(ai) max(ai)];
+            ax.XTick = [0:90:360]; 
+            text(0,1.05,sprintf('r: %.2f, PFD%c: %.2f',sdata.hd_info_half(5),176,sdata.hd_info_half(6)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
+            ax.YLim = [0 max([0.1 max(hd_ratemap1(:),[],'omitnan') max(hd_ratemap2(:),[],'omitnan')]) ].*1.1;
+            % line([sdata.hd_info_half(2) sdata.hd_info_half(2)],ax.YLim,'Color','k')
             line([sdata.hd_info_half(6) sdata.hd_info_half(6)],ax.YLim,'Color','b')
             set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz);       
             grid on;
-            [~,leg] = legendflex([a1 a2],{'Half 1','Half 2'},'anchor',{'nw','nw'},'ncol',1,'box','off','buffer',[0,0],'fontsize',fsiz);    
-            leg(3).Children.FaceAlpha = 0.75;
-            leg(4).Children.FaceAlpha = 0.75;
             set(gca,'yticklabel',num2str(get(gca,'ytick')','%.1f'))   
+            xlabel(sprintf('Head Direction (%s)',char(176)))
+            ylabel('Firing Rate (Hz)')        
 
 %% >>>>>>>>>> ISIs
         axisi = axes('Units','pixels','Position',[axhd.Position(1)+axhd.Position(3)+70 axhd.Position(2)-45 axhd.Position(3) axhd.Position(4)+45]);
-            xi = [-pdata.isi_xvalues pdata.isi_xvalues];
-            idist = [sdata.isi{1}; sdata.isi{1}];
-            bar(xi(:),idist(:),1,'k','EdgeColor','k'); hold on;
-            bar(xi(abs(xi)<2),idist(abs(xi)<2),1,'r','EdgeColor','r');
+            xi = pdata.isi_xvalues;
+            f = sdata.isi{1};
 
+            edg = 0 : 1 : 50;
+            edg = unique([-edg edg]);
+            x = xi(:)';
+            ex = edg(:)';
+            y = f(:)';
+
+            % marker XY matrices
+            X = [ex(1:end-1); ex(2:end); ex(2:end); ex(1:end-1)];
+            Y = [zeros(size(y)); zeros(size(y)); y; y];   
+            C = zeros(numel(y),3);
+            C(abs(x(:))<2,:) = ones(sum(abs(x(:))<2),3).*[1 0 0];
+
+            % plot the data 
+            patch(axisi,X,Y,'k','facevertexcdata',C,'facecolor','flat','edgecolor','none'); % plot from scratch
+
+            % axis settings
             ax = gca;
             ax.XLim = [-50 50];
             ax.XTick = -50:25:50;                        
@@ -429,60 +483,65 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
             xlabel('Interspike interval (ms)') % label x axis
             text(.5,1.05,sprintf('fwhmx: %.1fms, burst index: %.2f',sdata.isi_info(1),sdata.burst_index(1)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','center')
             grid on;
-            %line([-2 -2],ax.YLim,'Color','b')
-            %line([2 2],ax.YLim,'Color','b')
         
 %% >>>>>>>>>> Spike autocorrelation - 25ms refractory period             
         axref = axes('Units','pixels','Position',[axisi.Position(1) axisi.Position(2)-265 axisi.Position(3) axisi.Position(4)-10]);
-            autoc = sdata.autocorr_25{1};
-            tlag = pdata.autocorr_25_xvalues;
+            f = sdata.autocorr_refrac{1};
+            xi = pdata.autocorr_refrac_xvalues;
 
-            bar(tlag,autoc,1,'k','EdgeColor','k'); hold on;
-            bar(tlag(abs(tlag)<2),autoc(abs(tlag)<2),1,'r','EdgeColor','r'); hold on;
-            
+            edg = pdata.autocorr_refrac_evalues;
+            x = xi(:)';
+            ex = edg(:)';
+            y = f(:)';
+
+            % marker XY matrices
+            X = [ex(1:end-1); ex(2:end); ex(2:end); ex(1:end-1)];
+            Y = [zeros(size(y)); zeros(size(y)); y; y];   
+            C = zeros(numel(y),3);
+            C(abs(x(:))<2,:) = ones(sum(abs(x(:))<2),3).*[1 0 0];
+        
+            % plot the data 
+            patch(axref,X,Y,'k','facevertexcdata',C,'facecolor','flat','edgecolor','none'); % plot from scratch
+
+            % axis settings
             ax = gca;            
             ax.XLim = [-20 20];
             ax.XTick = -20:10:20;            
             xlabel('Time lag (ms)') % label x axis
             ylabel('Probability') % label y axis
             set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz); 
-            text(0,1.05,sprintf('RPV: %d (%.2f%%)',sdata.autocorr_25_info(1),sdata.autocorr_25_info(2)*100),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
+            text(0,1.05,sprintf('RPV: %d (%.2f%%)',sdata.autocorr_refrac_info(1),sdata.autocorr_refrac_info(2)*100),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')
             set(ax,'yticklabel',num2str(get(gca,'ytick')','%.3f'))        
             grid on;
-            %line([-2 -2],ax.YLim,'Color','b')
-            %line([2 2],ax.YLim,'Color','b')
             
 %% >>>>>>>>>> Spike autocorrelation - 500ms theta modulation           
-        axref = axes('Units','pixels','Position',[axref.Position(1) axref.Position(2)-210 axref.Position(3) axref.Position(4)-40]);
-            autoc = sdata.autocorr_500{1}(:,1);
-            tlag = pdata.autocorr_500_xvalues;
-            autof = sdata.autocorr_500{1}(:,2);
+        axref = axes('Units','pixels','Position',[axref.Position(1) axref.Position(2)-250 axref.Position(3) axref.Position(4)]);
+            f = sdata.autocorr_theta{1}(:,1);
+            xi = pdata.autocorr_theta_xvalues;
 
-            bar(tlag,autoc,1,'k'); hold on;
+            edg = pdata.autocorr_theta_evalues;
+            x = xi(:)';
+            ex = edg(:)';
+            y = f(:)';
 
+            % marker XY matrices
+            X = [ex(1:end-1); ex(2:end); ex(2:end); ex(1:end-1)];
+            Y = [zeros(size(y)); zeros(size(y)); y; y];   
+            C = zeros(numel(y),3);
+            C(abs(x(:))<2,:) = ones(sum(abs(x(:))<2),3).*[1 0 0];
+        
+            % plot the data 
+            patch(axref,X,Y,'k','facevertexcdata',C,'facecolor','flat','edgecolor','none'); % plot from scratch
+
+            % axis settings
             ax = gca;
             ax.XLim = [-500 500];
             ax.XTick = -500:125:500;
-            ax.XTickLabel = {};
             ylabel('Probability') % label y axis
             set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz); 
-            text(.5,1.05,sprintf('Theta index: %.1f, frequency: %.2fHz',sdata.autocorr_500_info(1),sdata.autocorr_500_info(2)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','center')
             set(ax,'yticklabel',num2str(get(gca,'ytick')','%.3f'))        
-            grid on;
-            
-        axref2 = axes('Units','pixels','Position',[axref.Position(1) axref.Position(2)-45 axref.Position(3) 40]);
-            a2 = area(tlag,autof,'FaceColor','b','FaceAlpha',.75,'EdgeColor','none'); hold on;
-            ax = gca;
-            ax.XLim = [-500 500];
-            ax.XTick = -500:125:500;
-            ax.XTickLabel = {'-500','','-250','','0','','250','','500'};
-            ax.XTickLabelRotation = 0;
-            ax.YAxisLocation = 'right';            
+            grid on;          
             xlabel('Time lag (ms)') % label x axis
-            set(ax,'yticklabel',num2str(get(gca,'ytick')','%.2f'))        
-            set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz); 
-            line([0 0],ax.YLim,'Color',[.5 .5 .5])
-            grid on
             
 %% >>>>>>>>>> Theta phase preference
         axthp = axes('Units','pixels','Position',[axisi.Position(1)+axisi.Position(3)+60 axisi.Position(2) axisi.Position(3) axisi.Position(4)]);
@@ -490,7 +549,17 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
             ai = reshape(deg2rad(-180:5:540),[],1); % doing this means we have bins symmetrical around zero
             xi = movmean(ai,2,'EndPoints','discard');
 
-            bar(xi,phase_dist,1,'k'); hold on;
+            ex = ai(:)';
+            y = phase_dist(:)';
+
+            % marker XY matrices
+            X = [ex(1:end-1); ex(2:end); ex(2:end); ex(1:end-1)];
+            Y = [zeros(size(y)); zeros(size(y)); y; y];   
+            C = zeros(numel(y),3);
+        
+            % plot the data 
+            patch(axthp,X,Y,'k','facevertexcdata',C,'facecolor','flat','edgecolor','none'); hold on; % plot from scratch
+
             ax = gca;
             y1 = ax.YLim;
             si = cos(xi) ./ max(sin(xi)) .* (y1(2)/2) + (y1(2)/2);
@@ -499,10 +568,12 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
 
             ylabel('Spikes')
             ax.XTick = [-pi 0 pi 2*pi 3*pi];
+            ax.XLim = [-pi 3*pi];
             ax.XTickLabel = {'-\pi','0','\pi','2\pi','3\pi'};
             xlabel('Theta phase (rad)') % label x axis
             text(.5,1.05,sprintf('R: %.1f, PFA: %.2f',sdata.theta_info(1),sdata.theta_info(2)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','center')    
-            
+            % set(gcf,'visible','on'); keyboard
+
 %% >>>>>>>>>> Speed
         axvs = axes('Units','pixels','Position',[axthp.Position(1) axthp.Position(2)-265 axthp.Position(3) axthp.Position(4)-10]);
             xi = 0:1:50;
@@ -570,6 +641,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,fast_figs,sshuff,figvis
         set(gca,'LineWidth',flnw,'layer','top','FontSize',fsiz,'XColor','k','YColor','k'); % set the axes to be on top, set their thickness to flnw, set all fonts to size fsiz and make sure the axis and text are black 
         set(ax,'xticklabel',num2str(get(gca,'xtick')'.*bsize,'%.f'))
         %[~,leg] = legendflex([a1],{'= current part'},'anchor',{'sw','sw'},'ncol',1,'box','off','buffer',[-20,-35],'fontsize',fsiz);    
+        % set(gcf,'visible','on'); keyboard
 
 %% >>>>>>>>>> Save the overall figure
         % Save the figure  

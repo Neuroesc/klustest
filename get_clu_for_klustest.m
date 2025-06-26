@@ -42,7 +42,18 @@ function [clus] = get_clu_for_klustest(dataformat,config,tets,data_dirs)
 %% >>>>>>>>>> Heading 1
 %% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FUNCTION BODY
 switch dataformat
-    case {'Kwikcut'}
+    case {'kwiktint'}
+        clus = cell(1,size(tets,1));
+       
+        for tt = 1:size(tets,1)
+            [clu,~] = getcut([config.cname '\' config.cname '_' num2str(tets(tt)) '.cut']); % this reads the .cut file line by line so that it can be entered into the mtint structure  
+            clus{tt} = uint8( clu(:) );  
+
+            nclus = numel(unique(clus{tt}));
+            disp(sprintf('\t\t...%d total clusters %s',nclus))
+        end
+
+    case {'kwikcut'}
         clus = cell(1,size(tets,1));
        
         for tt = 1:size(tets,1)
@@ -59,7 +70,7 @@ switch dataformat
             disp(sprintf('\t\t...%d total clusters %s',nclus))
         end
         
-    case {'Neuralynx'}
+    case {'neuralynx'}
         clus = cell(1,size(tets,1));
         for tt = 1:size(tets,1)
             cutname = [config.cname '_' num2str(tets(tt,1)) '.cut']; % the cut file name
@@ -69,7 +80,7 @@ switch dataformat
             disp(sprintf('\t\t...%d total clusters %s',nclus))
         end
         
-    case {'ElePhy'}
+    case {'phy'}
         clus = cell(1,max(tets));
         for tt = 1:length(tets)
             for ff = 1:length(data_dirs)

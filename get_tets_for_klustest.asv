@@ -77,8 +77,48 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             tets = [ [p_tet(:) zeros(size(p_tet(:)))]; [p_ste(:) ones(size(p_ste(:)))] ];
 
         case {'kwiktint'}
+            % find possible directories
+            possible_dnames = dir(pwd);
+            possible_dnames = {possible_dnames([possible_dnames.isdir]).name};
+            possible_dnames = possible_dnames(~ismember(possible_dnames,{'.','..'}));
+            
+            % find which directories have spike data
+            data_dirs = [];
+            snames = [];
+            for dd = 1:length(possible_dnames)
+                f1 = dir([pwd '\' possible_dnames{dd} '\*.set']); % tint set file
+                f2 = dir([pwd '\' possible_dnames{dd} '\*.pos']); % tint pos file
+            
+                if ~isempty(f1) || ~isempty(f2)
+                    data_dirs = [data_dirs; {[pwd '\' possible_dnames{dd}]}];
+                    snames =  [snames; possible_dnames(dd)];
+                end
+            end
+        
+            % find tetrodes in each sub directory
+            p_tet = 1:1024;
+            for ff = 1:length(data_dirs) % for every data directory
+                d = dir([data_dirs{ff} '\*.' num2str()]);
+                d([d.bytes]==16384) = []; % remove files that only contain a header
+                fnames_ntt = {d.name};
+                tets_found = cell2mat(cellfun(@str2num,replace(fnames_ntt,{'TT','.ntt','.NTT',},''),'UniformOutput',false));
+                p_tet = intersect(p_tet,tets_found); % if an electrode is missing in one directory it will be discarded here
+            end
+            tets = [ [p_tet(:) zeros(size(p_tet(:)))]; [p_ste(:) ones(size(p_ste(:)))] ];
+
+
+
+
+
+
+
+
+
+
+
+
             % find which tetrodes are present
-            cnames = dir([config.cname '\*.cut*']); % list all cut files corresponding to the given combined name
+            cnames = dir([config.cname '*.cut*']); % list all cut files corresponding to the given combined name
             clist = {cnames.name}.'; % get their names
             cnums = cellfun(@(x) regexp(x,'[_]\d+[.]','match'),clist); % extract just the number part of the name
             tets = cellfun(@(x) str2double(regexp(x,'\d+','match')),cnums); % convert to an integer, these numbers are the existing tetrodes (cut files)
@@ -86,16 +126,15 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             
             % find which tetrodes we want to (and can) analyse            
             tets = intersect(config.tetrodes,tets);
-            tets(:,2) = zeros(size(tets(:,1)));
 
             % open the first existing tetrode and extract the session info
-            cutname = [config.cname '\' config.cname '_' num2str(tets(1)) '.cut']; % the cut file name
+            cutname = [config.cname '_' num2str(tets(1)) '.cut']; % the cut file name
             [~,etext] = getcut(cutname); % get data from cutfile, specifically the line which identifies the parent sessions
             idx = strfind(etext,': '); % should contain two values
             flist = textscan(etext(idx(1)+2:idx(2)-8),'%s','delimiter',','); % get the file name parts of the string
             snames = flist{1,1}; % extract the relevant cell
 
-            % find where the original data files are stored 
+            % find where the original cheetah files are stored 
             data_dirs = strcat(repmat(pwd,size(snames,1),1),repmat('\',size(snames,1),1),snames); 
 
         case {'phy'}

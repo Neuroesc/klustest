@@ -35,8 +35,19 @@ function [hdata,fname] = get_set_for_klustest(dataformat,config)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% FUNCTION BODY
+    hdata = table;
+    hdata.date = datetime("now",'format','yyyyMMddHHmmss'); % default is now
+
     switch dataformat
-        case {'Kwikcut','Neuralynx'}
+        case {'kwiktint'}
+            % d = dir([config.snames{1} '\*.set']);
+            % fnames_set = {d.name};
+            fname = [config.snames{1} '\' config.snames{1} '.set'];
+            h = get_dacq_headers(fname);
+
+            hdata.date = h.trial_date;
+
+        case {'kwikcut','neuralynx'}
             d = dir([config.snames{1} '\*.ntt']);
             fnames_ntt = {d.name};
             n_ntt = length(fnames_ntt);
@@ -48,22 +59,7 @@ function [hdata,fname] = get_set_for_klustest(dataformat,config)
             fname = [config.snames{1} '\' fnames{1}];
             h = Nlx2MatSpike(fname,[0 0 0 0 0],1,1,1); 
         
-            hdata = table;
-            idx = contains(h,{'ADBitVolts'}); % find the ADBitVolts entry
-            if any(idx)
-                txt = h{idx}(13:end); % extract the number part of the text
-                hdata.adbv = str2double(strsplit(txt)); % split and convert to double  
-            end
-        
-            idx = contains(h,{'Time Opened'}); % find the ADBitVolts entry
-            if any(idx)
-                txt = h{idx}(24:33); % extract the number part of the text
-                sindx = regexp(txt,'/');
-                txt(sindx) = [];
-                hdata.date = txt;  
-            end
-        
-            idx = contains(h,{'TimeCreated'}); % find the ADBitVolts entry
+            idx = contains(h,{'TimeCreated'}); % find the time created entry
             if any(idx)
                 txt = h{idx}(13:24); % extract the number part of the text
                 sindx = regexp(txt,'/');
@@ -71,9 +67,9 @@ function [hdata,fname] = get_set_for_klustest(dataformat,config)
                 hdata.date = txt;     
             end
       
-        case {'ElePhy'}
+        case {'phy'}
             hdata.date = datestr(now,30);
-            fname = 'ElePhy';
+            fname = 'phy';
 
     end
     

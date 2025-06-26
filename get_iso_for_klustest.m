@@ -42,8 +42,7 @@ function [isods,quals,feats] = get_iso_for_klustest(dataformat,config,tets,clus,
 %% >>>>>>>>>> Heading 1
 %% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FUNCTION BODY
 switch dataformat
-    case {'Kwikcut','klustakwik','ElePhy'}
-        
+    case {'kwikcut','kwiktint','phy','klustakwik'}
         isods = cell(1,size(tets,1));
         feats = cell(1,size(tets,1));
         quals = cell(1,size(tets,1));        
@@ -55,11 +54,12 @@ switch dataformat
             end
             
             switch dataformat
-                case {'klustakwik','Kwikcut'}
+                case {'klustakwik','kwikcut','kwiktint'}
                     % get feature data                    
-                    fetfile = [config.cname '.fet.' num2str(tets(tt,1))];
+                    fetfile = [pwd '\' config.cname '\' config.cname '.fet.' num2str(tets(tt,1))];
                     fid = fopen(fetfile,'r');
                     fets = sscanf(fgetl(fid),'%d');
+
                     if tets(tt,2)==1 % stereotrode
                         nch = 2;
                     elseif tets(tt,2)==0 % tetrode
@@ -68,19 +68,29 @@ switch dataformat
                         % get_tets_for_klustest listed an unknown electrode type here so we don't know how many channels it has
                         keyboard
                     end
-                    nfets = fets/nch;
+
+                    if any(strcmp(dataformat,{'kwiktint'}))
+                        nfets = (fets-1)/nch; % kwiktint fet files include spike times as the last column
+                    else
+                        nfets = fets/nch;
+                    end
+
                     if round(nfets)~=nfets
                         % for some reason the number of features is not a whole number
                         keyboard
                     end
                     fdat = fscanf(fid,'%f',[fets Inf]);
                     fdata = fdat';
+                    if any(strcmp(dataformat,{'kwiktint'}))
+                        fdata = fdata(:,1:end-1); % kwiktint fet files include spike times as the last column
+                    end                    
                     fetindx = max(fdata)~=min(fdata); % logical vector where 0 = dead channels
 
                     % get cluster data
-                    clu = clus{tets(tt)};               
-                    
-                case {'ElePhy'}
+                    clu = clus{tt}; 
+                    fclose(fid);
+
+                case {'phy'}
                     fdata = [];
                     clu = [];
                     for ff = 1:length(data_dirs)

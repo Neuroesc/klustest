@@ -1,4 +1,5 @@
 function klustest_v4(varargin)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %klustest analyse cluster properties
 %   _  _ _    _  _ ____ ___ ____ ____ ___ 
 %   |_/  |    |  | [__   |  |___ [__   |  
@@ -160,17 +161,17 @@ function klustest_v4(varargin)
 % version 18.6.0, Release 15/02/23 added analysis_log so analysis steps can be recorded and easily checked
 % version 18.6.1, Release 18/02/23 added limits to klustfig_part so it doesn't plot every waveform or point in the feature space
 % version 18.6.2, Release 19/02/23 added position data to first cluster of a session, added 3D HD to get_pos_for_klustest('reconstruction')
+% version 19.0.0, Release 22/06/25 added support for Axona data formats 
+% version 19.0.1, Release 23/06/25 improved figures and comments
+% version 19.0.2, Release 24/06/25 simplified sdata and added bdata tables
+% version 19.0.3, Release 24/06/25 simplified autocorrelations and sdata contents
 %
 % Author: Roddy Grieves
 % Dartmouth College, Moore Hall
 % eMail: roddy.m.grieves@dartmouth.edu
 % Copyright 2021 Roddy Grieves
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Heading 3
-%% >>>>>>>>>>>>>>>>>>>> Heading 2
-%% >>>>>>>>>> Heading 1
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> INPUT ARGUMENTS CHECK
-%% Parse inputs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INPUTS
     p = inputParser;
     addParameter(p,'tetrodes',1:16,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
     addParameter(p,'clusters',0,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
@@ -181,15 +182,13 @@ function klustest_v4(varargin)
     rname = dlist{end-1};
     addParameter(p,'rname',rname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
     
-    parse(p,varargin{:});
-%     parse(p);    
+    parse(p,varargin{:});   
     config = p.Results;  
 
     %% overrides
-    override.part_config = 1; % 0 = use precomputed part_config file when available
+    override.part_config = 0; % 0 = use precomputed part_config file when available
     override.use_groups = 1;
     override.quickstart = 0; % 0 = use precomputed LFP and cluster quality when available
-    intrinsic_theta = 0; % 1 = calculate intrinsic theta (mildly time consuming, takes about 5% of klustest's time) 
     spatial_shuffles = 1; % 1 = calculate probability of grid score, spatial info, rayleigh vector
     skipfigs = 1; % 1 = skip making a figure if it exists already    
     save_figs = 1; % 1 = make and save figures (VERY time consuming, takes about 90% of klustest's time)
@@ -211,14 +210,14 @@ function klustest_v4(varargin)
     mapset.arcut        = 400; % cm2, place fields must have a total area greater than this value
     mapset.drive_height_mm = 20;
     mapset.fix_aspect   = 1; % if set to 1, position plots will be rotated so that they are always landscape (the orientation of the figures and thus the best for visualisation)
-    mapset.wave_window  = [-0.25 0.75]; % (default [-0.25 0.75]) ms, the time window over which to load and plot waveforms (only used when loading Phy data, but used for all plotting)
+    mapset.wave_window  = [-0.2 0.8]; % (default [-0.25 0.75], Axona = [-0.2 0.8]) ms, the time window over which to load and plot waveforms (only used when loading Phy data, but used for all plotting)
     
     % HD settings - settings to use when generating head direction maps
-    mapset.hd_displace  = 0; % (default 0) if set to 1, will use dispplacement (movement direction) instead of head direction
+    mapset.hd_displace  = 0; % (default 0) if set to 1, will use displacement (movement direction) instead of head direction
     mapset.hd_type      = 'histogram'; % (default 'histogram') enter 'density' for a circular kolmogorov smirnov density estimate plot, enter 'histogram' for the traditional histogram polar plot
     mapset.hd_bins      = 60; % (default 64) the number of bins to use when computing HD plot
     mapset.hd_sigma     = 0.04; % (default 2) the standard deviation of the gaussian kernel used in HD circular density estimate
-    mapset.hd_boxcar    = 3; % (defualt 3) the number of bins over which to compute the HD histogram boxcar average    
+    mapset.hd_boxcar    = 3; % (default 3) the number of bins over which to compute the HD histogram boxcar average    
     
     %% Data formats
     % % if cluster cut with kwiktint
@@ -231,21 +230,20 @@ function klustest_v4(varargin)
     % formats.iso         = 'klustakwik';
     
     % if cluster cut with kwikcut
-    formats.pos         = 'Neuralynx';
-    formats.clu         = 'Kwikcut';
-    formats.tet         = 'Kwikcut';
-    formats.set         = 'Kwikcut';    
-    formats.spk         = 'Kwikcut';
-    formats.lfp         = 'Neuralynx';
-    formats.iso         = 'Kwikcut';   
-    config.cname        = 'kwikcut';
-    
-    formats.pos         = 'reconstruction';
+    formats.pos         = 'kwiktint';
+    formats.clu         = 'kwiktint';
+    formats.tet         = 'kwiktint';
+    formats.set         = 'kwiktint';    
+    formats.spk         = 'kwiktint';
+    formats.lfp         = 'kwiktint';
+    formats.iso         = 'kwiktint';   
+    config.cname        = 'kwiktint';
+    formats.pos         = 'kwiktint';
     formats.front_led_color = 1; % 1 = red, 2 = green, 3 = blue
     formats.back_led_color = 2; % 1 = red, 2 = green, 3 = blue
     formats.led_angle_offset = 0; % CCW offset of LEDs on the head
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> PARTITION SETTINGS
+%%%%%%%%%%%%%%%% PARTITION SETTINGS
     % part_names gives the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
     % part_names = {'arena1'}';
     part_names = {'arena1','hills','arena2'}';    
@@ -269,7 +267,12 @@ function klustest_v4(varargin)
     % part_interval_keys = {{}}';    
     part_interval_keys = {{} {} {}}';
     % convert this information into a convenient table (which we will add to later)
-    part_config = table(part_names,part_methods,part_intervals,part_interval_keys);
+    if isscalar(mapset.ppm) 
+        pratio = repmat(mapset.ppm,size(part_names));
+    else
+        pratio = mapset.ppm(:);
+    end
+    part_config = table(part_names,part_methods,part_intervals,part_interval_keys,pratio);
     
     % The part_config table contains basic information about how/where/if to separate the data into different
     % partitions or parts. For instance if we record an open field, then some sort of maze, then the open field
@@ -277,25 +280,25 @@ function klustest_v4(varargin)
     % lump everything together if we care about some intrinsic property of the cells
     % We want to save this table so that in the future we can just run the function with the same settings    
     [~,~,~] = mkdir([pwd '\' config.outname]); % create a folder to hold outputs        
-    part_config_fname = [pwd '\' config.outname '\part_config'];
+    part_config_fname = [pwd '\' config.outname '\part_config.txt'];
     if override.part_config || ~exist(part_config_fname,'file')
         writetable(part_config,part_config_fname)
     elseif override.part_config && exist(part_config_fname,'file')
-        part_config_fname2 = [pwd '\' config.outname '\part_config_' datestr(now,30) '.mat'];      
+        part_config_fname2 = [pwd '\' config.outname '\part_config_' datetime("now",'format','yyyyMMddHHmmss') '.mat'];      
         [~,~,~] = movefile(part_config_fname,part_config_fname2);
         writetable(part_config,part_config_fname)
     elseif ~override.part_config && exist(part_config_fname,'file')
         part_config = readtable(part_config_fname);
+        mapset.ppm = part_config.pratio(:,1);
     end
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> PREPARE DATA
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Tetrodes and sessions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREPARE DATA
+%%%%%%%%%%%%%%%% Tetrodes and sessions
     disp('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'); tic;
-    stk = dbstack;
-    tnow = datestr(now,'yyyy-mm-dd-HH-MM-SS');
-    disp(sprintf('Running %s at %s...',stk.name,tnow))
+    tnow = datetime("now",'format','yyyy-MM-dd HH:mm:ss');
+    disp(sprintf('Running %s at %s...','klustest_v4',tnow))
 
-%% >>>>>>>>>> find which tetrodes are available
+    %% find which tetrodes are available
     % When sessions are cluster cut together (which you should do with multiple sessions recording the same cells)
     % kilocut saves the filenames of the individual sessions in the kilo.mat file as well as the tetrodes analysed
     disp(sprintf('Assessing data...'))
@@ -328,7 +331,7 @@ function klustest_v4(varargin)
     pdata.cname = config.cname;
     pdata.outname = config.outname;
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Position data
+%%%%%%%%%%%%%%%% Position data
     disp(sprintf('\t...positions'));
     pos_srate = 50; % desired sampling rate of position data (Hz)
     [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,snames,pos_srate,mapset); % directories
@@ -339,18 +342,18 @@ function klustest_v4(varargin)
     pdata.pos_srate = pos_srate;
     pdata.tstart = tstart;
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Cluster data
+%%%%%%%%%%%%%%%% Cluster data
     disp(sprintf('\t...clusters'))
     clus = get_clu_for_klustest(formats.clu,config,tets,data_dirs);
     pdata.clusters = clus;
     
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Spike data
+%%%%%%%%%%%%%%%% Spike data
     disp(sprintf('\t...spikes and waveforms'))
     [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(formats.spk,data_dirs,tets,tstart,clus,mapset.wave_window);
     pdata.spike_times = spk;
     pdata.wavtime = wavtime;
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Cluster quality
+%%%%%%%%%%%%%%%% Cluster quality
     disp(sprintf('\t...cluster quality'))
     mname = [pwd '\' pdata.outname '\klustest_quickstart.mat'];
     run_get_iso = 1;
@@ -371,7 +374,7 @@ function klustest_v4(varargin)
         save(mname,'isods','fets','quals','-mat','-v7.3'); 
     end
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> LFP data
+%%%%%%%%%%%%%%%% LFP data
     disp(sprintf('\t...LFP'))
     mname = [pwd '\' pdata.outname '\klustest_quickstart.mat'];    
     run_get_lfp = 1;
@@ -392,21 +395,22 @@ function klustest_v4(varargin)
         save(mname,'lfp','lfp_srate','-mat','-append'); 
     end    
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Part data
+%%%%%%%%%%%%%%%% Part data
     disp(sprintf('\t...part config'))
     nparts = size(part_config,1);
     for pp = 1:nparts
-        switch part_config.part_methods{pp}
+        switch part_config.part_methods(pp)
             case {1} % if the method is whole session (i.e. everything recorded)
-                part_config.part_times(pp) = {data_intervals(:)};
+                part_config.part_times{pp} = data_intervals(:);
                 % include all the periods where data were recorded
 
             case {2} % if the method is recording session
-                part_config.part_times(pp) = {data_intervals(part_config.part_intervals{pp},:)};
+                part_config.part_times{pp} = data_intervals(part_config.part_intervals(pp),:);
                 % include all the recording periods listed in part_intervals
 
             case {3} % if the method is intervals (keypresses)
                 % still to add, use manageKEYS and Nlx2MatEV
+                keyboard
                 
         end
         part_config.part_duration(pp) = sum(part_config.part_times{pp}(:,2)-part_config.part_times{pp}(:,1));        
@@ -414,9 +418,10 @@ function klustest_v4(varargin)
     pdata.part_config = part_config; % a copy of the part_config, this will be extended to include more data that the saved part_config though, table format
     disp(sprintf('\t\t...done'))
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Run through clusters
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLUSTERS
     disp(sprintf('Analysing clusters...'))
     sdata = table;
+    bdata = table;
 
     % Kilosort mainly ignores tetrodes and just assigns cluster IDs across 
     % all available channels (even though we well it not to cluster across 
@@ -444,6 +449,7 @@ function klustest_v4(varargin)
             % added to sdata_temp which will be concatenated with sdata at the end    
             for pp = 1:nparts % for every part               
                 sdata_temp = table; % temporary table for this cluster
+                bdata_temp = table;
                 part_now = part_config.part_names{pp};
                 if pp==1; disp(sprintf('\b%s ',part_now)); else; disp(sprintf('\b| %s ',part_now)); end
 
@@ -484,6 +490,10 @@ function klustest_v4(varargin)
                 sdata_temp.rat = {pdata.rat}; % the rat number/name
                 sdata_temp.date = {pdata.date};
                 sdata_temp.partn = uint8(pp);
+                sdata_temp.dir = [pwd '\'];
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp = sdata_temp; % will hold behaviour data in table format
+                end
                 if tets(tt,2)==0 % tetrode
                     uci = ['uci_' rname '_' pdata.date '_t' num2str(tets(tt,1)) '_c' num2str(clusters(cc))]; % unique cell identifier - a string with [rat name, session date, electrode, cluster];
                 elseif tets(tt,2)==1 % stereotrode
@@ -499,14 +509,11 @@ function klustest_v4(varargin)
                 sdata_temp.frate = numel(pspx) / (numel(ppot)*(1/pos_srate));           
                 inow = isods{tt};
                 sdata_temp.isod = inow(cc,:); % cluster quality [isolation distance, lratio]
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.pos = { single([ppot(:) ppox(:) ppoy(:) ppoh(:) ppov(:) ppoa(:) ppod]) };
+                end                               
                 
-                if cc==1 % if this is the first cluster                    
-                    sdata_temp.pos = { single([ppot(:) ppox(:) ppoy(:) ppoh(:) ppov(:) ppoa(:) ppod]) };
-                else
-                    sdata_temp.pos = cell(1,1);
-                end                
-                
-%% >>>>>>>>>> Waveform data
+%%%%%%%%%%%%%%%% Waveform data
                 nch = size(wav_now,2);
                 mxs = NaN(nch,1);
                 wav_means = NaN(4,size(wav_now,1));
@@ -537,7 +544,7 @@ function klustest_v4(varargin)
                 sdata_temp.wave_std = { int16(wav_stds) };
                 %pdata.wavtime = (( 1:size(wav_now,1) ) -8 ) * (1/spk_srate) * 1e03; % waveform samples, converted to seconds, then microseconds
 
-%% >>>>>>>>>> Firing rate map
+%%%%%%%%%%%%%%%% Firing rate map
                 % This function incorporates a number of different methods for generating firing rate maps and you can check the function for detailed descriptions of these
                 % my favourite is the method proposed by Leutgeb et al. (2005) Independent Codes for Spatial and Episodic Memory in Hippocampal Neuronal Ensembles
                 % https://doi.org/10.1126/science.1114037
@@ -595,13 +602,11 @@ function klustest_v4(varargin)
                 sdata_temp.spatial_info = [si sis sp cohe]; % [spatial info (b/s), spatial info (b/sp), sparsity, coherence]
                 pdata.(part_now).dwellmap = single(dwellmap);
                 pdata.(part_now).speedlift = speedlift;
-                if cc==1
-                    sdata_temp.dwellmap = { pdata.(part_now).dwellmap };
-                else
-                    sdata_temp.dwellmap = cell(1,1);
-                end
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.dwellmap = { pdata.(part_now).dwellmap };
+                end 
 
-%% >>>>>>>>>> Place fields
+%%%%%%%%%%%%%%%% Place fields
                 % threshold ratemap
                 zmap = ( ratemap - mean(ratemap(:),'omitnan') ) / std(ratemap(:),'omitnan'); % zscore ratemap
                 thresh_ratemap = imbinarize(zmap,mapset.zcut); % 2 s.d. threshold
@@ -620,7 +625,7 @@ function klustest_v4(varargin)
                 sdata_temp.nfields = size(datout.Area,1);
                 sdata_temp.field_data = { table2cell(datout) };
 
-%% >>>>>>>>>> Grid score
+%%%%%%%%%%%%%%%% Grid score
                 % create autocorrelation
                 % I'm not entirely sure who to attribute this to, but autocorrelations are pretty ubiquitous now
                 % this function was adapted from xPearson (adapted for speed and to make it work on n-dimensions)
@@ -640,7 +645,7 @@ function klustest_v4(varargin)
                 sdata_temp.grid_info = single([gdata.grid_score gdata.wavelength gdata.grid_orientation]);
                 sdata_temp.grid_field_info = single([gdata.radius gdata.majaxislength gdata.minaxislength gdata.height gdata.width gdata.field_orientation]); 
 
-%% >>>>>>>>>> HD and Rayleigh vector length
+%%%%%%%%%%%%%%%% HD and Rayleigh vector length
                 % HD firing rate maps are now computed by mapHD, like the above it will accept a precomputed
                 % dwell time map to speed up computation
                 % rayleigh vector values etc are computed on sum normalised HD firing rate maps to remove
@@ -667,11 +672,9 @@ function klustest_v4(varargin)
                 sdata_temp.hd_ratemap = { single(hd_ratemap) };               
                 sdata_temp.hd_info = single([r mx(1) mn sd]); % Rayleigh v, PFD (angle with highest firing), mean angle (norm circ mean), SD of firing (norm circ stdev)
                 pdata.(part_now).hd_dwellmap = hd_dwellmap;
-                if cc==1
-                    sdata_temp.hd_dwellmap = { pdata.(part_now).hd_dwellmap };
-                else
-                    sdata_temp.hd_dwellmap = cell(1,1);
-                end  
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.hd_dwellmap = { pdata.(part_now).hd_dwellmap };
+                end 
                 
                 % half maps
                 midpoint = median(ppot(:));
@@ -690,19 +693,17 @@ function klustest_v4(varargin)
                 sdata_temp.hd_ratemap_half = { single(hd_ratemap_h1) single(hd_ratemap_h2) };               
                 sdata_temp.hd_info_half = single([r_h1 mx_h1(1) mn_h1 sd_h1 r_h2 mx_h2(1) mn_h2 sd_h2]); % Rayleigh v, PFD (angle with highest firing), mean angle (norm circ mean), SD of firing (norm circ stdev)
                 pdata.(part_now).hd_dwellmap_half1 = hd_dwellmap_h1;
-                pdata.(part_now).hd_dwellmap_half2 = hd_dwellmap_h2;                
-                if cc==1
-                    sdata_temp.hd_dwellmap_half = { pdata.(part_now).hd_dwellmap_half1 pdata.(part_now).hd_dwellmap_half2 };
-                else
-                    sdata_temp.hd_dwellmap_half = cell(1,2);
-                end  
+                pdata.(part_now).hd_dwellmap_half2 = hd_dwellmap_h2;    
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.hd_dwellmap_half = { pdata.(part_now).hd_dwellmap_half1 pdata.(part_now).hd_dwellmap_half2 };
+                end 
 
-%% >>>>>>>>>> Spatial info, grid score, Rayleigh vector shuffles               
+%%%%%%%%%%%%%%%% Spatial info, grid score, Rayleigh vector shuffles               
                 % spatial shuffles
                 if spatial_shuffles
                     sinfo = savelli_shuffle(ppox.*10,ppoy.*10,ppot,ppoh,pspt,sidx,rmset,100);
                     obs_vals = [sdata_temp.spatial_info(1) mean(table2array(sinfo(:,2)),1,'omitmissing') sdata_temp.hd_info(1)];
-                    [z,p] = stats_z_probability(obs_vals,table2array(sinfo(:,4:6)));
+                    [z,p] = computeZProbability(obs_vals,table2array(sinfo(:,4:6)));
                     sdata_temp.spatial_info_z = z; % [spatial info (z), grid score (z), Rayleigh vector (z)]
                     sdata_temp.spatial_info_p = p; % [spatial info (p), grid score (p), Rayleigh vector (p)]
                 else
@@ -710,7 +711,7 @@ function klustest_v4(varargin)
                     sdata_temp.spatial_info_p = NaN(1,3); % [spatial info (p), grid score (p), Rayleigh vector (p)]
                 end                
 
-%% >>>>>>>>>> AHV analysis
+%%%%%%%%%%%%%%%% AHV analysis
                 ahv_window = 200;
                 ahv_binsize = 2;
                 ahv_mindwell = (1/pos_srate);
@@ -736,13 +737,11 @@ function klustest_v4(varargin)
                 sdata_temp.ahv_curve = { single(ahv_ratemap(:)) };             
                 pdata.ahv_xvalues = single(xi);    
                 pdata.(part_now).ahv_dwell = single(ahv_dwellmap);
-                if cc==1
-                    sdata_temp.ahv_dwellmap = { pdata.(part_now).ahv_dwell };
-                else
-                    sdata_temp.ahv_dwellmap = cell(1,1);
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.ahv_dwellmap = { pdata.(part_now).ahv_dwell };
                 end 
             
-%% >>>>>>>>>> Theta phase preference
+%%%%%%%%%%%%%%%% Theta phase preference
                 if ~isempty(lfp)
                     % bin the theta phase data
                     ai = reshape(deg2rad(-180:5:540),[],1); % doing this means we have bins symmetrical around zero
@@ -768,48 +767,35 @@ function klustest_v4(varargin)
                     sdata_temp.theta_info = NaN(1,3,'single');                   
                 end
                 
-%% >>>>>>>>>> ISI and autocorrelation analyses
+%%%%%%%%%%%%%%%% ISI and autocorrelation analyses
                 %% inter-spike interval
-                [~,idata,isis] = getISIhalfwidth(pspt,100);
+                % [~,idata,isis] = getISIhalfwidth(pspt,100);
+                [f,xi,e,edg] = compute_hoisa(pspt,'spt2',pspt,'binsize',1,'window',50,'method','isih');
 
                 % accumulate data
-                sdata_temp.isi = { single(idata.adist(:,2)) }; 
-                sdata_temp.isi_info = single([idata.fwhmx ]); 
-                pdata.isi_xvalues = single(idata.adist(:,1));
+                sdata_temp.isi = { f }; 
+                sdata_temp.isi_info = single([ NaN ]); 
+                pdata.isi_xvalues = single(xi);
 
                 %% burst index
                 % from Mizuseki et al. (2012) Activity Dynamics and Behavioral Correlates of CA3 and CA1 Hippocampal Pyramidal Neurons 
                 % "The spike-burst index was defined as the fraction of spikes with <6 ms ISIs (Harris et al., 2001)"
                 % https://doi.org/10.1002/hipo.22002  
+                isis = diff(pspt) .* 1e3; % ISIs in ms
                 bindx = [isis; NaN] < 6 | [NaN; isis] < 6; % bindx is an index of all spikes sharing an isi less than 6ms
                 burst_index = sum(bindx) / numel(pspt);
 
                 % accumulate data
                 sdata_temp.burst_index = single(burst_index); 
 
-                %% Intrinsic theta   
-                if intrinsic_theta
-                    % from van der Meer and Redish (2011) Theta Phase Precession in Rat Ventral Striatum Links Place and Reward Information
-                    % "To quantify the degree and frequency of theta modulation in single cells, we used the method used by Royer et al. (2010). 
-                    % First we computed the autocorrelogram of the cell, in 10 ms bins from -500 to +500 ms, normalized it to the maximum value
-                    % between 100 and 150 ms (corresponding to theta modulation), and clipped all values above 1. Then we fit the following function [function in paper]
-                    % where t is the autocorrelogram time lag, and a-c, w, and t1–2 were fit using the fminsearch optimization function in MATLAB. A measure
-                    % of theta modulation strength, the “theta index,” was defined as a/b, which intuitively corresponds to the ratio of the sine fit relative to
-                    % the baseline in the autocorrelogram."
-                    % https://doi.org/10.1523/JNEUROSCI.4869-10.2011
-                    [thi,thf,thr,t500,c500,f500] = getTHETAintrinsic(pspt); % we also extract the frequency of theta and the goodness of the theta fit
-                else
-                    [c500,t500] = spike_auto(pspt,'win_size',500,'bin_size',10);
-                    thi = NaN; 
-                    thf = NaN; 
-                    thr = NaN;                    
-                    f500 = NaN(size(t500));                    
-                end
+                %% theta   
+                [f,xi,e,edg] = compute_hoisa(pspt,'spt2',pspt,'binsize',10,'window',500,'method','hoisa');
 
                 % accumulate data
-                sdata_temp.autocorr_500 = { single([c500(:) f500(:)]) }; 
-                sdata_temp.autocorr_500_info = single([thi thf thr]); % theta index, theta frequency, fit rsquare
-                pdata.autocorr_500_xvalues = single(t500);
+                sdata_temp.autocorr_theta = { single(f(:)) }; 
+                % sdata_temp.autocorr_500_info = single([NaN NaN NaN]); % theta index, theta frequency, fit rsquare
+                pdata.autocorr_theta_xvalues = single(xi);
+                pdata.autocorr_theta_evalues = single(edg);
 
                 %% Refractory period analyses           
                 % refractory period violation analyses
@@ -818,14 +804,18 @@ function klustest_v4(varargin)
                 % "There are few reliable methods for estimating the contamination of a unit isolated from tetrode recordings (see DISCUSSION). The only method that does not rely 
                 % on the same measures that are used for spike sorting is to check the number of spikes that occur within the refractory period of another spike..."
                 % https://doi.org/10.1152/jn.00699.2015
-                [nrpv,prpv,fp1,fp2,censored,t25,c25] = getRPVcount(pspt,isis,part_config.part_duration(pp)); % we extract the number of spikes in the refractory period, what proportion of the total this is etc                    
+                % [nrpv,prpv,fp1,fp2,censored,t25,c25] = getRPVcount(pspt,isis,part_config.part_duration(pp)); % we extract the number of spikes in the refractory period, what proportion of the total this is etc                    
+                [f,xi,e,edg] = compute_hoisa(pspt,'spt2',pspt,'binsize',1,'window',50,'method','hoisa');
+                nrpv = sum(isis < 2);
+                prpv = nrpv ./ (numel(pspt)-1);
 
                 % accumulate data
-                sdata_temp.autocorr_25 = { single(c25(:)) }; 
-                sdata_temp.autocorr_25_info = single([nrpv prpv]);     
-                pdata.autocorr_25_xvalues = single(t25);  
+                sdata_temp.autocorr_refrac = { single(f(:)) }; 
+                sdata_temp.autocorr_refrac_info = single([nrpv prpv]);     
+                pdata.autocorr_refrac_xvalues = single(xi);  
+                pdata.autocorr_refrac_evalues = single(edg);
 
-%% >>>>>>>>>> Speed cell analysis
+%%%%%%%%%%%%%%%% Speed cell analysis
                 % This analysis is taken from Kropff et al (mEC speed cell paper)
                 % It is unlikely to be of great use to HPC people, although many place cells are speed modulated
                 % Related to this, you can also compute the relationship between theta power and running speed
@@ -835,16 +825,15 @@ function klustest_v4(varargin)
                 sdata_temp.speed_slope = { single(interp1(svals,crve,0:1:50,'linear')) };             
                 sdata_temp.speed_info = single([sscore sslope sintcpt]);             
                 pdata.(part_now).speed_dwell_time = single(interp1(svals,stime,0:1:50,'linear'));
-                if cc==1
-                    sdata_temp.speed_dwell_time = { pdata.(part_now).speed_dwell_time };
-                else
-                    sdata_temp.speed_dwell_time = cell(1,1);
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.speed_dwell_time = { pdata.(part_now).speed_dwell_time };
                 end 
                 
-%% >>>>>>>>>> Accumulate sdata
+%%%%%%%%%%%%%%%% Accumulate data
                 sdata = [sdata; sdata_temp];
+                bdata = [bdata; bdata_temp];
                 
-%% >>>>>>>>>> Create summary figure for this cluster in this part
+                % Create summary figure for this cluster in this part
                 fname = [pwd '\' pdata.outname '\part_figures\' sdata_temp.uci{1} '_' part_now '.png'];
                 if exist(fname,'file') && skipfigs % if the figure exists and we don't want to overwrite it
                     continue % don't make the figure
@@ -854,15 +843,17 @@ function klustest_v4(varargin)
                     % putvar(pdata,sdata_temp,pp,wav_now_clus,quals,fets,fast_figures); return;
                     klustfig_part(pdata,sdata_temp,pp,wav_now_clus,quals,fets,fast_figures,spatial_shuffles,'off');
                 end
-            end % pp = 1:nparts
-        end % cc = 1:nclus
-    end % tt = 1:length(tets)
+            end
+        end
+    end
     
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %% Save the data and finish up
+%%%%%%%%%%%%%%%% Save the data and finish up
     sdata = addprop(sdata,{'pdata'},{'table'});
+    sdata = addprop(sdata,{'bdata'},{'table'});    
     sdata.Properties.CustomProperties.pdata = pdata;
+    sdata.Properties.CustomProperties.bdata = bdata;    
     save([pwd '\' pdata.outname '\sdata.mat'],'sdata'); % save session data
-    analysis_log({'klustest'},1,'version',{'v18.6.2'});
+    analysis_log({'klustest'},1,'version',{'v19.0.3'});
     
     % finish up
     toc1 = toc/60;
@@ -870,49 +861,4 @@ function klustest_v4(varargin)
     disp(['Go to ','<a href = "matlab: [s,r] = system(''explorer ',pwd,' &'');">','current folder','</a>'])
     disp(['Go to ','<a href = "matlab: [s,r] = system(''explorer ',[pwd '\' pdata.outname],' &'');">','klustest folder','</a>'])
     disp('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
