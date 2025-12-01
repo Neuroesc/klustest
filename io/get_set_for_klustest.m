@@ -42,7 +42,7 @@ function [hdata,fname] = get_set_for_klustest(dataformat,config)
         case {'kwiktint'}
             % d = dir([config.snames{1} '\*.set']);
             % fnames_set = {d.name};
-            fname = [config.snames{1} '\' config.snames{1} '.set'];
+            fname = [config.snames{1} '.set'];
             h = get_dacq_headers(fname);
 
             hdata.date = h.trial_date;

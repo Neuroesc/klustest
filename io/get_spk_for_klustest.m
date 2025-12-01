@@ -54,7 +54,7 @@ switch dataformat
 
             for ff = 1:length(data_dirs) % for every data directory 
                 [~,b,~] = fileparts(data_dirs{ff});          
-                fname = [b '\' b '.' num2str(tets(tt,1))]; % the file name                
+                fname = [b '.' num2str(tets(tt,1))]; % the file name                
 
                 [spt,ch1,ch2,ch3,ch4,set_h] = get_spikes_volts(fname);
                 h = get_dacq_headers(fname); % sometimes the setfile doesn't contain the duration

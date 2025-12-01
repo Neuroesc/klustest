@@ -56,7 +56,7 @@ switch dataformat
             switch dataformat
                 case {'klustakwik','kwikcut','kwiktint'}
                     % get feature data                    
-                    fetfile = [pwd '\' config.cname '\' config.cname '.fet.' num2str(tets(tt,1))];
+                    fetfile = [config.cname '.fet.' num2str(tets(tt,1))];
                     fid = fopen(fetfile,'r');
                     fets = sscanf(fgetl(fid),'%d');
 

@@ -1,56 +1,85 @@
 function klustest(varargin)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% DESCRIPTION
-%klustest  function for analysing clusters after cluster cutting
-%    This function utilises many minor functions to both analyse and plot cluster data generated in Tint. If requested, 
-%    it will output a figure for each cluster, the cluster space of each tetrode, the cross-correlations of every cluster 
-%    on a tetrode and a session data structure (sdata.mat) It will also generate an mtint file (mtint.mat) containing all 
-%    the tetrode and cluster info.
+% klustest analyse cluster properties
+%   _  _ _    _  _ ____ ___ ____ ____ ___ 
+%   |_/  |    |  | [__   |  |___ [__   |  
+%   | \_ |___ |__| ___]  |  |___ ___]  |  
 %
-% USAGE:
-%           klustest() process files with default settings
-%                 klustest will look for .cut files named [cname] (default is kwiktint), it will open the first one and extract 
-%                 details about which sessions were used to make that .cut file. It will then open all of the required files to
-%                 build an mtint table which contains a summary of all the spikes etc for a session. It will then process every
-%                 cluster on every possible tetrode and generate an output figure for each.
+%  klustest analyse clustered data and export analysis figure(s)
 %
-%           klustest(Name,Value,...) process with Name-Value pairs used to control aspects of the function output
+%  klustest(varargin) uses additional settings specified in name 
+%  value pairs (see below)
 %
-%           Parameters include:
+%  name-value input options include:
 %
-%           'tetrodes'              -   (default = 1:16) Vector, the tetrodes to run on (i.e. [1 2 3 4 5 6] would run on tetrodes 1 to 6)
+%  'tetrodes'      -   Numeric vector that specified the tetrodes to run on 
+%                       (i.e. [1 2 3 4 5 6] would run on tetrodes 1 to 6)
+% 
+%                       Default value is 1:16
 %
-%           'clusters'              -   (default = 0) Vector, the clusters to run on, set this to 0 to run on all clusters
+%  'clusters'      -   Numeric vector that specifies the clusters to run on
+%                       Set to 0 to run on all clusters 
 %
-%           'rname'                 -   (default = first 3 characters of parent directory) String, the rat name/number; this will be used in the sdata structure so its important to give this
+%                       Default value is 0
 %
-%           'cname'                 -   (default = 'kwiktint') String, function will automatically look for klustakwiked files named this
+%  'rname'         -   String or charcter vector specifying the rat name
+%                       This is used in the sdata structure so its important 
+%                       to ensure this is correct
 %
-%           'part_names'            -   Cell array of strings, the names you want the outputs to be saved as - see function text for more info
-%                                       default values are whatever values are specified in klustest
+%                       Default value is the name of the parent directory
+% 
+%  'outname'       -   String or charcter vector specifying the output
+%                       filename used by klustest - i.e. figures will be saved
+%                       in a folder named this.
 %
-%           'part_methods'          -   Numeric vector, see function text for more info
-%                                       default values are whatever values are specified in klustest
+%                       Default value is 'klustest'.
+% 
+%  'cname'         -   String or charcter vector specifying the output
+%                       filename used by kwiktint - or the name used for
+%                       klustakwiked files
 %
-%           'part_intervals'        -   Cell array of numeric vectors, see function text for more info
-%                                       default values are whatever values are specified in klustest
+%                       Default value is 'kwiktint'.
 %
-%           'pixel_ratio_override'  -   (default = []) Numeric vector, set to empty [] to ignore, otherwise this must be n recording sessions long
+%  Notes
+%  -----
+%  1. If cells are recorded in the same session their spikemaps are 
+%      expected to differ while the position data and dwellmap will
+%      remain the same. To save time this function can accept a precomputed 
+%      output, skipping that computation (which is usually more time 
+%      consuming than the spikemap). Simply provide the 'speedlift' output 
+%      from rate_mapper to the next iteration of rate_mapper. For some 
+%      methods a dwellmap is not computed or would not speed up 
+%      computation if provided, so instead a matrix or similar form of 
+%      data output is used instead. Thus in some cases (i.e. 'histogram' 
+%      method) the speedlift matrix will be identical to the dwellmap, 
+%      but in other cases (i.e. 'kadaptive') it will take a different 
+%      form and contain different data.
 %
-%           'interval_keys'         -   (default = {'s','e'}) Cell array, what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters - see function text for more info
+%  2. For the 'histogram' method and smoothing method 1, smoothing is 
+%      achieved using imgaussfilt. The FilterDomain is set to 'spatial'
+%      to ensure convolution in the spatial domain. 'Padding' is set to 
+%      a scalar value of 0 as there should be no position or spike data
+%      in bins outside the map limits.
+% 
+%  3. For the 'histogram' method and smoothing method 1, smoothing is 
+%      achieved using imgaussfilt. The FilterDomain is set to 'spatial'
+%      to ensure convolution in the spatial domain. 'Padding' is set to 
+%      a scalar value of 0 as there should be no position or spike data
+%      in bins outside the map limits.
 %
-% EXAMPLES:
 %
-%           % run function using default values
-%           klustest()
+%  Example
+%  ---------
 %
-%           % run function using default values, but only on tetrodes 1 and 5
-%           klustest('tetrodes',[1 5])
+%  % in a directory with kwiktint outputs, run function using default values
+%  klustest()
+% 
+%  % run function using default values, but only on tetrodes 1 and 5
+%  klustest('tetrodes',[1 5])
+% 
+%  % run function using default values, all specified
+%  klustest('tetrodes',1:16,'clusters',0,'rname','RAT1','cname','kwiktint','outname','klustest')
 %
-%           % run function using default values, all specified
-%           klustest('tetrodes',1:16,'clusters',0,'rname','RAT','cname','kwiktint')
-%
-% See also: kwiktint getTRODESkk
+%  See also kwiktint
 
 % HISTORY:
 % version 01.0.0, Release 23/02/16 YTcluanalysisROD majorly revised
@@ -119,871 +148,725 @@ function klustest(varargin)
 % version 17.0.0, Release 15/04/19 added exception for weird characters in saveKEY, fixed error in figKEYS where timestamps were not concatenated correctly
 % version 17.1.0, Release 15/04/19 overhaul of digital input processing, added manageKEYS which can be used via prepKEYS without klustest
 % version 17.2.0, Release 17/04/19 added name value pair arguments
-
+% version 18.0.0, Release 13/02/23 major overhaul started to accept Neuralynx formats, merging different versions of klustest, improving figures and speed, improving sdata
+% version 18.1.0, Release 13/02/23 data loading now done by get_tets_for_klustest, get_pos_for_klustest, get_clu_for_klustest, etc, this allows multiple data formats to be loaded
+% version 18.2.0, Release 13/02/23 added ability to load 3D reconstructed position data, simplified 3D HD calculation
+% version 18.3.0, Release 13/02/23 improved part_config and part figure which is now made by overhauled klustfig_part
+% version 18.3.1, Release 14/02/23 improved comments and command line messaging
+% version 18.4.0, Release 14/02/23 replaced mapping function with rate_mapper
+% version 18.4.1, Release 14/02/23 fixed bug in theta phase analysis
+% version 18.5.0, Release 14/02/23 removed bloat from sdata, removed unnecessary preallocation, pdata is now stored in sdata as a custom property structure
+% version 18.5.1, Release 15/02/23 fixed bugs in klustfig_part, function seems to run smoothly in cases where there are no spikes now
+% version 18.6.0, Release 15/02/23 added analysis_log so analysis steps can be recorded and easily checked
+% version 18.6.1, Release 18/02/23 added limits to klustfig_part so it doesn't plot every waveform or point in the feature space
+% version 18.6.2, Release 19/02/23 added position data to first cluster of a session, added 3D HD to get_pos_for_klustest('reconstruction')
+% version 19.0.0, Release 22/06/25 added support for Axona data formats 
+% version 19.0.1, Release 23/06/25 improved figures and comments
+% version 19.0.2, Release 24/06/25 simplified sdata and added bdata tables
+% version 19.0.3, Release 24/06/25 simplified autocorrelations and sdata contents
+% version 20.0.0, Release 29/11/25 Updates for GitHub release
+% version 20.0.1, Release 29/11/25 datesrt depreciated, replaced with datetime
 %
-% Author: Roddy Grieves
-% UCL, 26 Bedford Way
-% eMail: r.grieves@ucl.ac.uk
-% Copyright 2016 Roddy Grieves
+% AUTHOR 
+% Roddy Grieves
+% University of Glasgow, Sir James Black Building
+% Neuroethology and Spatial Cognition Lab
+% eMail: roddy.grieves@glasgow.ac.uk
+% Copyright 2025 Roddy Grieves
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% INPUT ARGUMENTS CHECK
-%% Prepare default settings
-    def_tetrodes                = 1:16;        
-    def_clusters                = 0;     
-    def_cname                   = 'kwiktint';   
-    % I can extract the rat name from the file path because I know my folder structure, if this is not the case for you, change def_rname to what you prefer
-    % the next two lines make rname equal the first 3 characters of the directory containing the current directory
-    pname = pwd; sindx=strfind(pname,'\'); 
-    def_rname                   = pname(sindx(end-1)+1:sindx(end-1)+3);    
-    
-    % Specify partition configuration settings
-    % If these are passed as name,value pair arguments those values will be taken instead
-    def_part_names              = {'S1'}; % the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
-    % method of partition, corresponding to each of the names above: 1 = combine everything, 2 = take a recording session, 3 = use digital inputs
-    def_part_methods            = [2]; % i.e. if part_methods=[2 2 2 1], we will have 4 parts, the first 3 correspond to some combination of recording sessions (there can be multiple ones) and the last one will include all data
-    % cell array of vectors indicating which intervals to include in each partition: if method = 1 this does nothing, if method = 2 this should specify which recording sessions to include, if method = 3 this should specify which digital input pairs to include (inf = use all)
-    def_part_intervals          = {1}; % i.e. if part_methods=[2 2 2], then if part_intervals={1 2 3}, rec 1 will go in part 1, rec 2 in part 2 and rec 3 in part 3    OR     if part_methods=[2 2 2 2 2], then if part_intervals={1 [2 4 5] 3}, rec 1 will go in part 1, rec 2,4 and 5 in part 2 and rec 3 in part 3
-    def_pixel_ratio_override    = []; % set to empty [] to ignore, otherwise this must be n recording sessions long
-    def_interval_keys           = {{'s','e'}}; % what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
-            
-%% Parse inputs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INPUTS
     p = inputParser;
-    addParameter(p,'tetrodes',def_tetrodes,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
-    addParameter(p,'clusters',def_clusters,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
-    addParameter(p,'cname',def_cname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
-    addParameter(p,'rname',def_rname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
-    addParameter(p,'part_names',def_part_names,@(x) ~isempty(x) && iscell(x)); 
-    addParameter(p,'part_methods',def_part_methods,@(x) ~isempty(x) && isnumeric(x)); 
-    addParameter(p,'part_intervals',def_part_intervals,@(x) ~isempty(x) && iscell(x)); 
-    addParameter(p,'pixel_ratio_override',def_pixel_ratio_override,@(x) ~isempty(x) && isnumeric(x)); 
-    addParameter(p,'interval_keys',def_interval_keys,@(x) ~isempty(x) && iscell(x) && numel(x)==2); 
-    parse(p,varargin{:});
+    addParameter(p,'tetrodes',1:16,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
+    addParameter(p,'clusters',0,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
+    addParameter(p,'screening',0,@(x) ~isscalar(x) && isnumeric(x));     
+    addParameter(p,'cname','kwiktint',@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
+    addParameter(p,'outname','klustest',@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x));     
+    dlist = strsplit(pwd,'\');
+    rname = dlist{end-1};
+    addParameter(p,'rname',rname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
+    parse(p,varargin{:});   
+    config = p.Results;  
 
-%% Retrieve parameters 
-    config = p.Results;    
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% INITIAL SETTINGS / INPUTS
-    % overrides - general settings for overriding normal klustest functionality
-    config.pconfig_override = 0; % set to 1 if you want to ignore and overwrite an existing part_config, set to 2 to run with current part_config settings without overwriting anything
-    config.maintain_mtint   = 0; % DEBUGGING ONLY set to 1 to save/load mtint in the base workspace, this saves time when running the function mutliple times (for instance in debugging) but should otherwise be set to 0
-    config.mtint_override   = 0; % set this to 1 to force the production of a new mtint file (do this if you reclustered in tint for instance)
-    config.trial_override   = 0; % set this to 1 to force the production of a new .key file (do this if you are not happy with the current trials for instance)
-    config.fig_key_off      = 1; % set this to 1 to suppress display of trials/digital keypresses in an interactive UI
+    %% overrides
+    override.part_config = 0; % 0 = use precomputed part_config file when available
+    override.use_groups = 1;
+    override.quickstart = 0; % 0 = use precomputed LFP and cluster quality when available
+    spatial_shuffles = 1; % 1 = calculate probability of grid score, spatial info, rayleigh vector
+    skipfigs = 1; % 1 = skip making a figure if it exists already    
+    save_figs = 1; % 1 = make and save figures (VERY time consuming, takes about 90% of klustest's time)
+    fast_figures = 1; % 1 = 4-5x faster figure saving, but at a slightly lower quality
     
-    % map settings - settings used when generating 2D spatial firing rate maps
-    config.rmethod          = 'gaussian'; % (default 'nearest') the mapping approach to use, either 'nearest','gaussian','adaptive','KDE'
-    config.map_padd         = 2; % (default 2) the number of bins to pad spatial maps with
-    config.bin_size         = 2; % (default 2) bin size in cm for calculating the rate map (make sure data is in cm or pm/sm values are given)
-    config.map_sigma        = 1.5; % (default 1.5) used by nearest and KDE method, sigma of gaussian to use when smoothing traditional dwell and spike maps, or used as bandwidth of KDE
-    config.smethod          = 1; % (default 1) used by nearest method, when set to 1 the dwell and spike maps are smoothed before dividing, 2 means the smoothing is applied after dividing, 3 means no smoothing
-    config.min_dwell        = 0.01; % (default 0.1) total number of seconds that rat has to be in a bin for it to be filled, for adaptive method this controls how big the bins will be expanded
-    config.g_sigma          = 5; % (default 10) only used by gaussian method - sigma of gaussian used to weight position point and spike point distances, bigger means smoother maps
-    config.min_dist         = 5; % (default 1) used by adaptive and gaussian method, only bins within this distance of some position data will be filled, bigger means more filled (blue) bins
-    config.max_dist         = 20; % (default 1) used by adaptive and gaussian method, only bins within this distance of some position data will be filled, bigger means more filled (blue) bins
-    config.srate            = 50; % (default 50) sampling rate of data in Hz, used to calculate time
-
-    % field settings - settings to use when detecting place fields
-    config.frcut            = 0.5; % relative minimum firing rate (% of ratemap max) to be considered a field
-    config.arcut            = 9; % minimum number of pixels to be considered a field, typically people use 9 contiguous pixels
-    config.minfr            = 1; % (Hz) absolute minimum cutoff firing rate to be considered a field
-
-    % spike plot settings
-    config.over_smooth      = 13; % number of position data points over which to smooth instantaneous firing rate when calculating overdispersion
-    config.time_bins        = 2; % (default 2s) time window over which to compute the spike vs time plot
-
+    %% Map settings
+    mapset.ppm          = 300;
+    mapset.jumpcut      = 5; % standard deviations, jumps in the position data with a zscored distance between them greater than this will be removed and interpolated
+    mapset.jumpwindow   = 10; % number of samples over which to smooth jump detection, higher values will remove more data before/after jumps, increase this if outliers are being left behind
+    mapset.method       = 'histogram';
+    mapset.binsize      = 20; % (mm) firing rate map bin size
+    mapset.ssigma       = 40; % (mm) firing rate map smoothing sigma
+    mapset.padding      = 10; % (mm) how much to pad the edges of the firing rate map
+    mapset.mindwell     = 0.01; % (default 0.1) total number of seconds that rat has to be in a bin for it to be filled, for adaptive method this controls how big the bins will be expanded
+    mapset.mindist      = 40; % (mm, default 1) used by adaptive and gaussian method, only bins within this distance of some position data will be filled, bigger means more filled (blue) bins
+    mapset.smethod      = 1; % smoothing method, 1 = before division, 2 = after, 3 = no smoothing 
+    mapset.zcut         = 1; % z-score for field detection in z-scored firing rate maps   
+    mapset.frcut        = 1; % place fields must have a peak firing rate at least greater than this value
+    mapset.arcut        = 400; % cm2, place fields must have a total area greater than this value
+    % mapset.drive_height_mm = 20;
+    mapset.fix_aspect   = 1; % if set to 1, position plots will be rotated so that they are always landscape (the orientation of the figures and thus the best for visualisation)
+    mapset.wave_window  = [-0.2 0.8]; % (default [-0.25 0.75], Axona = [-0.2 0.8]) ms, the time window over which to load and plot waveforms (only used when loading Phy data, but used for all plotting)
+    
     % HD settings - settings to use when generating head direction maps
-    config.hd_type          = 'histogram'; % (default 'histogram') enter 'density' for a circular kolmogorov smirnov density estimate plot, enter 'histogram' for the traditional histogram polar plot
-    config.hd_bins          = 64; % (default 64) the number of bins to use when computing HD plot
-    config.hd_sigma         = 0.04; % (default 2) the standard deviation of the gaussian kernel used in HD circular density estimate
-    config.hd_boxcar        = 3; % (defualt 3) the number of bins over which to compute the HD histogram boxcar average
-
-    % figure settings
-    run_figPART            = 1; % [ figPART ] set to 1 for figures showing the activity of a cluster in each part
-    run_figCLUS            = 0; % [ figCLUS ] set to 1 for figures showing the activity of a cluster in all parts together
-    run_figCROSS           = 0; % [ figCROSS ] set to 1 for figures showing spike cross-correlation of all cells on a given tetrode   
-    fig_vis                = 'off'; % set to 'on' to see figures as they are generated and saved, set to 'off' to suppress this (faster)
+    mapset.hd_displace  = 0; % (default 0) if set to 1, will use displacement (movement direction) instead of head direction
+    mapset.hd_type      = 'histogram'; % (default 'histogram') enter 'density' for a circular kolmogorov smirnov density estimate plot, enter 'histogram' for the traditional histogram polar plot
+    mapset.hd_bins      = 60; % (default 64) the number of bins to use when computing HD plot
+    mapset.hd_sigma     = 0.04; % (default 2) the standard deviation of the gaussian kernel used in HD circular density estimate
+    mapset.hd_boxcar    = 3; % (default 3) the number of bins over which to compute the HD histogram boxcar average    
     
-    % optimization settings
-    config.wave_asis        = 1; % set to 1 for waveform analysis and plots
-    config.temp_asis        = 1; % set to 1 for spike time analysis and plots
-    config.fild_asis        = 1; % set to 1 for place field analysis and plots
-    config.grid_asis        = 1; % set to 1 for grid cell analysis and plots
-    config.head_asis        = 1; % set to 1 for HD cell analysis and plots
-    config.ovrd_asis        = 1; % set to 1 for overdispersion analysis and plots
-    config.sisi_asis        = 1; % set to 1 for inter-spike interval analysis and plots
-    config.autc_asis        = 1; % set to 1 for spike autocorrelation analysis and plots
-    config.spph_asis        = 1; % set to 1 for spike theta phase analysis and plots
-    config.sped_asis        = 1; % set to 1 for speed modulation analysis and plots
-    config.cell_asis        = 1; % set to 1 for cell type analysis and plots
+    %% Data formats
+    % % if cluster cut with kwikcut
+    % formats.pos         = 'Neuralynx';
+    % formats.clu         = 'Neuralynx';
+    % formats.tet         = 'Tint';
+    % formats.set         = 'Neuralynx';    
+    % formats.spk         = 'Neuralynx';
+    % formats.lfp         = 'Neuralynx';
+    % formats.iso         = 'klustakwik';
+    
+    % if cluster cut with kwiktint
+    formats.pos         = 'kwiktint';
+    formats.clu         = 'kwiktint';
+    formats.tet         = 'kwiktint';
+    formats.set         = 'kwiktint';    
+    formats.spk         = 'kwiktint';
+    formats.lfp         = 'kwiktint';
+    formats.iso         = 'kwiktint';   
+    config.cname        = 'kwiktint';
+    formats.pos         = 'kwiktint';
+    formats.front_led_color = 1; % 1 = red, 2 = green, 3 = blue
+    formats.back_led_color = 2; % 1 = red, 2 = green, 3 = blue
+    formats.led_angle_offset = 0; % CCW offset of LEDs on the head
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Start analysis and get part_config
-    % get the function's name (people may rename it from klustest)
-    stk = dbstack;
-    function_name = stk.name;
+%%%%%%%%%%%%%%%% PARTITION SETTINGS
+    % part_names gives the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
+    % part_names = {'arena1'}';
+    part_names = {'arena1','hills','arena2'}';    
+    % part_methods specifies the method of partition, corresponding to each of the names above: 1 = combine everything, 2 = take a recording session, 3 = use digital inputs
+    % part_methods must be a cell array with the same length as part_names    
+    % part_methods = {2}';
+    part_methods = {2 2 2}';    
+    % part_intervals gives vector(s) indicating which intervals to include in each partition: 
+    % if method = 1 this value is ignored
+    % if method = 2 this should specify which recording sessions to include
+    % if method = 3 this should specify which digital input pairs to include (inf = use all) 
+    % part_intervals must be a cell array with the same length as part_names    
+    % i.e. if part_methods={2; 2; 2}, then if part_intervals={1; 2; 3}, rec 1 will go in part 1, rec 2 in part 2 and rec 3 in part 3
+    % if part_methods={2; 2; 2; 2; 2}, then if part_intervals={1; [2 4 5]; 3}, rec 1 will go in part 1, rec 2,4 and 5 in part 2 and rec 3 in part 3 
+    % if part_methods={2; 3}, then if part_intervals={2; [1 2 3 5 6 7 12]}, rec 2 will go in part 1, part 2 will be made up of the time segments between interval key pairs 1 2 3 5 6 7 12
+    % part_intervals = {1}';
+    part_intervals = {1 2 3}';    
+    % part_interval_keys specifies what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters
+    % i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
+    % part_interval_keys must be a cell array with the same length as part_names    
+    % part_interval_keys = {{}}';    
+    part_interval_keys = {{} {} {}}';
 
-    % starting messages
-    tic;
-    disp('----------------------------------------------------------------------------');
-    time_now = datestr(now,'yyyy-mm-dd-HH-MM-SS');
-    disp(sprintf('Running %s at %s...',function_name,time_now))
-    if config.pconfig_override; disp(sprintf('\tWARNING: will override part_config...'));                 end
-    if config.maintain_mtint;   disp(sprintf('\tWARNING: will use/maintain mtint in base workspace...')); end
-    if config.mtint_override;   disp(sprintf('\tWARNING: will override mtint...'));                       end
-    disp(sprintf('\t...%s spatial maps with %.1fcm bins (%.1f padding)',config.rmethod,config.bin_size,config.map_padd));
-    disp(sprintf('\t...%.1f%% cutoff for fields, %.1f pixels minimum, %.1fHz minimum',config.frcut.*100,config.arcut,config.minfr));
-    disp(sprintf('\t...%s HD maps with %d bins',config.hd_type,config.hd_bins));
+    part_names = {'arena1'}';    
+    part_methods = {2}';    
+    part_intervals = {1}';    
+    part_interval_keys = {{}}';
 
+    % convert this information into a convenient table (which we will add to later)
+    if isscalar(mapset.ppm) 
+        pratio = repmat(mapset.ppm,size(part_names));
+    else
+        pratio = mapset.ppm(:);
+    end
+    part_config = table(part_names,part_methods,part_intervals,part_interval_keys,pratio);
+    
     % The part_config table contains basic information about how/where/if to separate the data into different
     % partitions or parts. For instance if we record an open field, then some sort of maze, then the open field
     % again, we may want to divide the data into those 3 parts for separate analysis, or we might want to just 
     % lump everything together if we care about some intrinsic property of the cells
-    % We want to save this table so that in the future we can just run the function with the same settings
-    [~,~,~] = mkdir([pwd '\klustest\' config.cname]); % create the folder which will hold a lot of klustest data
-    part_num = length(config.part_names);
-    part_config = table(repmat({config.rname},part_num,1),config.part_names',config.part_methods',config.part_intervals',repmat({config.cname},part_num,1));
-    part_config.Properties.VariableNames = {'Rat','Part','Method','Intervals','Outname'};
-    
-    % load or save part_config
-    % as mentioned above, the part_config file contains the basic information required to process a dataset, it really
-    % is just a permanent copy of the settings outlined manually at the top of klustest. For more information, like
-    % the start and end times of each part, or the files used for each one, see the part_config saved in pdata instead
-    % partIO here will try to save the part_config in a file named pconfig_name, if this file already exists it will
-    % backup the contents using the current date/time and then save the part_config alongside it non destructively
-    % Otherwise it will make a new file and save it there. FOr this reason, if you load pconfig_name you will actually find 
-    % a structure named 'part_data', the field named 'part_config' is the last part_config setting used, the other fields are
-    % older part_configs, where the numbers in the field name reflect the date/time they were overwritten
-    pconfig_name = ['klustest\' config.cname '\' config.cname '_part_config.mat'];    
-    part_config = partIO(pconfig_name,part_config,config.pconfig_override);
-    disp(sprintf('\t...rat name: %s',config.rname))      
+    % We want to save this table so that in the future we can just run the function with the same settings    
+    [~,~,~] = mkdir([pwd '\' config.outname]); % create a folder to hold outputs        
+    part_config_fname = [pwd '\' config.outname '\part_config.txt'];
+    if override.part_config || ~exist(part_config_fname,'file')
+        writetable(part_config,part_config_fname)
+    elseif override.part_config && exist(part_config_fname,'file')
+        part_config_fname2 = [pwd '\' config.outname '\part_config_' datetime("now",'format','yyyyMMddHHmmss') '.mat'];      
+        [~,~,~] = movefile(part_config_fname,part_config_fname2);
+        writetable(part_config,part_config_fname)
+    end
+    part_config = readtable(part_config_fname);
+    mapset.ppm = part_config.pratio(:,1);
 
-    % start to prepare the pdata (part or session data) and sdata (cell data) tables
-    % To save space and make things easier for the user I have divided the data into two files
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREPARE DATA
+%%%%%%%%%%%%%%%% Tetrodes and sessions
+    disp('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>'); tic;
+    t = datetime('now');
+    s = string(t,'yyyy-MM-dd HH:mm:ss');    
+    disp(sprintf('Running %s at %s...','klustest',s))
+
+    %% find which tetrodes are available
+    % When sessions are cluster cut together (which you should do with multiple sessions recording the same cells)
+    % kilocut saves the filenames of the individual sessions in the kilo.mat file as well as the tetrodes analysed
+    disp(sprintf('Assessing data...'))
+    [tets,snames,data_dirs] = get_tets_for_klustest(formats.tet,config);
+    config.snames = snames;
+    disp(sprintf('\t...%d sessions',size(snames,1)));   
+    disp(sprintf('\t...will analyse electrodes: %s',mat2str(tets(:,1)')))  
+            
+    % get additional session info
+    disp(sprintf('\t...session info'));
+    [hdata,fname] = get_set_for_klustest(formats.set,config);
+    disp(sprintf('\t\t...read: %s',fname));            
+    disp(sprintf('\t\t...recording date: %s',hdata.date));        
+
+    % Start to prepare the pdata (part or session data) table
+    % To save space and make things easier for the user I have divided the data into two main arrays
     % the pdata structure contains data which applies to the whole session, like positions or dwell maps
     % the sdata table contains data for each cluster/part (one per row). The idea being that tables are easier to concatenate
     % to build a full data set
-    pdata = struct; % will hold part data
-    pdata.part_names = part_config.Part';
-    pdata.combined_name = part_config.Outname{1,1};
-    pdata.rat = part_config.Rat{1,1};
-    pdata.analysed = time_now;
+    pdata = struct;
+    pdata.rat = config.rname;
+    pdata.date = hdata.date;
+    pdata.analysed = s;
     pdata.directory = pwd;
-    pdata.interval_keys = config.interval_keys;
+    pdata.tetrodes = tets; % list of tetrodes analysed
+    pdata.sessions = size(snames,1); % the number of recording sessions used
+    pdata.data_dirs = data_dirs;  
+    pdata.snames = snames;
+    pdata.mapset = mapset;
+    pdata.cname = config.cname;
+    pdata.outname = config.outname;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Get session names and tetrodes
-    % When sessions are cluster cut together (which you should do with multiple sessions recording the same cells)
-    % tint saves the filenames of the individual sessions in the .cut file it makes after cluster cutting with
-    % klustakwik. I found extracting this data to be the easiest way to get this information, and it ensures the
-    % function will only ever be used to analyse sessions cluster cut in one file
-    % As it happens, we can also check to see which tetrodes have a cut file and from this work out which tetrodes
-    % we can and can't analyse
-    disp(sprintf('Assessing data...'))
-    [tets,snames,cutname] = getTRODES(config.cname); 
+%%%%%%%%%%%%%%%% Position data
+    disp(sprintf('\t...positions'));
+    pos_srate = 50; % desired sampling rate of position data (Hz)
+    [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,snames,pos_srate,mapset); % directories
+    % pos = [x,y,t,v,hd,ahv] for all data
+    % data_intervals = [tstart,tend] one row per recording
+    % tstart = the original start time of the first recording
+    pdata.pos = pos;
+    pdata.pos_srate = pos_srate;
+    pdata.tstart = tstart;
+
+%%%%%%%%%%%%%%%% Cluster data
+    disp(sprintf('\t...clusters'))
+    clus = get_clu_for_klustest(formats.clu,config,tets,data_dirs);
+    pdata.clusters = clus;
     
-    disp(sprintf('\t...read %s',cutname));
-    nsess = numel(snames);
-    disp(sprintf('\t...working on %d sessions: %s',nsess,strjoin(snames,', ')));    
-    if ~isempty(config.tetrodes) % if specific tetrodes were requested
-        if ~isempty(setdiff(config.tetrodes,tets)) % if there were some tetrodes requested that don't have files
-            disp(sprintf('\t...WARNING: skipping tetrodes %s, cut file not found',mat2str(setdiff(config.tetrodes,tets))))            
-        end
-        tetrodes = intersect(config.tetrodes,tets);
-    else % if the user is running in automatic detection of tetrodes
-        tetrodes = tets;
-    end
-    disp(sprintf('\t...tetrodes: %s accounted for',mat2str((tetrodes(:))')))
+%%%%%%%%%%%%%%%% Spike data
+    disp(sprintf('\t...spikes and waveforms'))
+    [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(formats.spk,data_dirs,tets,tstart,clus,mapset.wave_window);
+    pdata.spike_times = spk;
+    pdata.wavtime = wavtime;
 
-    % accumulate
-    pdata.tetrodes = tetrodes; % list of tetrodes analysed
-    pdata.session_names = snames; % names of the recording sessions (i.e. files) used, cell array
-    pdata.sessions = nsess; % the number of recording sessions used
+%%%%%%%%%%%%%%%% Cluster quality
+    disp(sprintf('\t...cluster quality'))
+    mname = [pwd '\' pdata.outname '\klustest_quickstart.mat'];
+    run_get_iso = 1;
+    if exist(mname,'file') && ~override.quickstart && 1
+        matObj = matfile(mname);
+        vars = who(matObj);
+        if ~any(strcmp(vars,{'isods'})) % if cluster quality is missing from the .mat file
+            run_get_iso = 1; % extract it below
+        else
+            disp(sprintf('\t\t...loading from file'))            
+            load(mname,'isods','fets','quals','-mat');
+            run_get_iso = 0; % do not extract it below              
+        end
+    end
+    if run_get_iso
+        [isods,quals,fets] = get_iso_for_klustest(formats.iso,config,tets,clus,data_dirs);
+        disp(sprintf('\t\t...saving to file'))                            
+        save(mname,'isods','fets','quals','-mat','-v7.3'); 
+    end
+
+%%%%%%%%%%%%%%%% LFP data
+    disp(sprintf('\t...LFP'))
+    mname = [pwd '\' pdata.outname '\klustest_quickstart.mat'];    
+    run_get_lfp = 1;
+    if exist(mname,'file') && ~override.quickstart && 1
+        matObj = matfile(mname);
+        vars = who(matObj);
+        if ~any(strcmp(vars,{'lfp'})) % if lfp is missing from the .mat file
+            run_get_lfp = 1; % extract it below        
+        else
+            disp(sprintf('\t\t...loading from file')) 
+            load(mname,'lfp','lfp_srate','-mat');    
+            run_get_lfp = 0; % do not extract it below  
+        end
+    end
+    if run_get_lfp
+        [lfp,lfp_srate] = get_lfp_for_klustest(formats.lfp,data_dirs,tstart,250); % lfp = zscored amplitude, time, theta phase, theta power
+        disp(sprintf('\t\t...saving to file'))                            
+        save(mname,'lfp','lfp_srate','-mat','-append'); 
+    end    
+
+%%%%%%%%%%%%%%%% Part data
+    disp(sprintf('\t...part config'))
+    nparts = size(part_config,1);
+    for pp = 1:nparts
+        switch part_config.part_methods(pp)
+            case {1} % if the method is whole session (i.e. everything recorded)
+                part_config.part_times{pp} = data_intervals(:);
+                % include all the periods where data were recorded
+
+            case {2} % if the method is recording session
+                part_config.part_times{pp} = data_intervals(part_config.part_intervals(pp),:);
+                % include all the recording periods listed in part_intervals
+
+            case {3} % if the method is intervals (keypresses)
+                % still to add, use manageKEYS and Nlx2MatEV
+                keyboard
+                
+        end
+        part_config.part_duration(pp) = sum(part_config.part_times{pp}(:,2)-part_config.part_times{pp}(:,1));        
+    end    
     pdata.part_config = part_config; % a copy of the part_config, this will be extended to include more data that the saved part_config though, table format
-    pdata.config = config; % a copy of the configuration struct, so ratemaps etc can be remade with identical settings if need be
+    disp(sprintf('\t\t...done'))
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Load or generate mtint
-    % The first step of the data analysis is just to load all of the Axona file data into a matlab friendly format
-    % this is largely unprocessed, raw data. This is stored in a structure called mtint.
-    % We create this and will use it a little bit, but mostly it just serves as a foundation for klustest. Our 
-    % data and stats will be stored in the pdata and sdata structures. Klustest shouldn't really change the contents
-    % of this structure as it serves as a non-destructive reference
-    % Because the mtint can be quite large and bulky, we have some time saving options - if one has already been created 
-    % we can just load it instead of making a new one. If you re-cluster cut the data you should override any existing
-    % mtint though (or delete it manually) otherwise the clusters will not match those in Tint. If we are debugging the function
-    % we can just opt to use an mtint stored in the base workspace (so no loading necessary)
-    disp(sprintf('Fetching DACQ data (mtint)...'));
-    mname = ['klustest\' config.cname '\' config.cname '_mtint.mat']; % the filename of the mtint (one that exists or one we will make)
-    
-    if any(strcmp(evalin('base','who'),'mtint')) && ~config.mtint_override && config.maintain_mtint % if we want to use an mtint currently held in memory
-        mtint = evalin('base','mtint');        
-        m = whos('mtint');     
-        disp(sprintf('\t...using mtint held in memory (%.1fMb)',m.bytes./1e+6));
-    elseif ~exist(mname,'file') || config.mtint_override
-        disp(sprintf('\t...building mtint'));    
-        mtint = getDACQDATA(config,snames,tetrodes); % my replacement for readalldacqdata
-        disp(sprintf('\t...post-processing mtint'));
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLUSTERS
+    disp(sprintf('Analysing clusters...'))
+    sdata = table;
+    bdata = table;
 
-        % deal with manual override of pixel ratio if necessary
-        if numel(config.pixel_ratio_override) ~= numel(mtint.pos.header)
-            disp(sprintf('\tWARNING: number of pixel ratios in part_config (%d) does not equal number of recordings (%d)... ignoring manual values',numel(config.pixel_ratio_override),length({mtint.pos.header.pixels_per_metre})));
-        else
-            for pr = 1:numel([mtint.pos.header.pixels_per_metre])
-                mtint.pos.header(pr).pixels_per_metre = config.pixel_ratio_override(pr);
-            end
-        end    
-
-        % post process position data etc
-        % this function adds running speed, head direction data and also smoothes, interpolates the data
-        % removes jumps in the data which are too quick to be natural, converts the position data to cm
-        % and a bunch of other stuff
-        mtint = postprocessDACQDATA(mtint); % my replacement for postprocess_DACQ_data
-
-        % save mtint
-        info = whos('mtint');
-        siz = info.bytes / 1000000;
-        disp(sprintf('\t...saving mtint (%.1fMb)',siz)) % I have tried my best to keep the mtint >50Mb for most recordings
-        save(mname,'mtint','-v7.3');
-    else
-        m = dir(mname);
-        disp(sprintf('\t...loading mtint (%.1fMb)',m.bytes./1e+6));
-        load(mname,'mtint');
-    end
-
-    % basic session info
-    duration = mtint.pos.total_duration;
-    disp(sprintf('\t...total session time: %ds',duration))
-    disp(sprintf('\t...cut file is made up of %d recordings',numel(mtint.header)))
-
-    if config.maintain_mtint
-        assignin('base','mtint',mtint); % leave mtint in base workspace
-    end 
-    disp(sprintf('\t...done'));
-
-    % accumulate
-    pdata.date = mtint.header_date; % date of recording
-    pdata.duration = duration; % total duration of the recording (s)
-    pdata.recording_times = mtint.pos.trial_duration; % the length in s of each recording
-    pdata.session_details = table; % table to hold extra session info in one place
-    pdata.session_details.session_names = pdata.session_names; % cell array of session names
-    pdata.session_details.session_lengths = mtint.pos.trial_duration(:); % length of each recording (s)
-    pdata.session_details.session_ends = cumsum(mtint.pos.trial_duration(:)); % the time (in concatenated klustest time) where this session ends in the data (s)
-    pdata.session_details.session_starts = pdata.session_details.session_ends - pdata.session_details.session_lengths; % the time (in concatenated klustest time) where this session starts in the data (s)
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Add interval/part time delineations to part_config (now stored in pdata)
-    % We want to divide a long recording session into partitions or parts, these might be whole
-    % recording sessions or they might be based on digital keypresses or you might just want the
-    % whole thing in one long session. In any case partSESS2 takes the keypresses and the desired
-    % method defining each part and gives the start + end time of each so we can separate the data later
-    % If you are using keypresses (i.e. intervals) partSESS2 will also run figKEYS which will plot every
-    % trial and let you correct keypresses if necessary
-    disp(sprintf('Preparing partitions...'))
-    pdata.config.trial_override = config.trial_override;
-    pdata.config.fig_key_off = config.fig_key_off;    
-    [pdata,nparts] = partSESS2(mtint,pdata); % process the part_config to get the start and end time of each partition
-
-    % basic session info
-    disp(sprintf('\t...%d parts',nparts))
-    disp(sprintf('\t...part methods: %s',mat2str(pdata.part_config.Method)))
-    disp(sprintf('\t...part names: %s',strjoin(pdata.part_config.Part,', ')))
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Prepare important data
-    disp(sprintf('Extracting initial data...'))
-    % get the position data (dacqUSB data) for the whole session
-    % position data are already converted to cm and saved in the mtint structure so we will just load it here
-    % most stuff in the mtint is saved as single so we also need to convert that out (some operations require double)
-    % also saved in the mtint are the head direction data (or displacement if only 1 LED was used) and pixels per metre
-    % converted into column format to match the position data
-    pox = double(mtint.pos.xy_cm(:,1)); % extract just the x coordinates
-    poy = double(-mtint.pos.xy_cm(:,2)); % extract just the y coordinates, reflect these as dacqUSB tracks from top left corner of picture
-    pot = double(mtint.pos.ts(:)); % extract the time stamp of each position value
-    pov = double(mtint.pos.speed(:)); % the running speed throughout the session
-    poh = double(mtint.pos.dir(:,1)); % HD data
-    ppm = double(mtint.pos.pixels_per_metre(:)); 
-
-    % get the position data sampling rate (should be 50hz) or 0.05s
-    srate = mtint.pos.header(1).sample_rate_num(1,1); % sampling rate
-    sinterval = 1 / srate; % sampling interval
-
-    % display results
-    disp(sprintf('\t...positions read: %d',numel(pox(:))));
-    disp(sprintf('\t...tracking LEDs: %d',size(mtint.pos.led_pos,2)));
-    disp(sprintf('\t...median pixel ratio: %dppm',nanmedian(ppm)));
-    disp(sprintf('\t...sample rate: %dHz (%.2fs)',srate,sinterval));
-
-    % get the LFP data
-    % as explained below in the LFP section, klustest loads the first available LFP data saved in mtint, this corresponds to
-    % LFP channel 1 in dacqUSB (i.e. the primary LFP channel displayed during recording)
-    % this can be changed here if necessary, but if we try to load a non-existant field of mtint the function will crash
-    Fs = mtint.lfp(1).Fs(1,1);
-    lfp = double(mtint.lfp(1).lfp(:,1));
-    lfpt = (0:length(lfp)-1)'/Fs; % make a vector for time    
-
-    % filter LFP to get the theta band
-    [b,a] = butter(4,[6 12]/(Fs/2)); % Generate 4th order butterworth filter coefficients for theta band [6 12] Hz
-    lftheta = filtfilt(b,a,lfp); % Apply filter to data using zero-phase filtering  
-    
-    % accumulate data
-    pdata.pox = pox;
-    pdata.poy = poy;
-    pdata.pot = pot; 
-    pdata.pov = pov;
-    pdata.poh = poh;    
-    pdata.ppm = ppm; 
-    pdata.sampling_rate = srate;
-    pdata.sampling_interval = sinterval;
-    pdata.leds = size(mtint.pos.led_pos,2);  
-
-    % display results
-    disp(sprintf('\t...LFP samples read: %d',numel(lfp)));
-    disp(sprintf('\t...LFP sample rate: %dHz',Fs));    
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################################################################################## %% Run through tetrodes and clusters
-    disp(sprintf('Analysing tetrode/cluster data...'))
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% For every available tetrode
-    % The next loop focuses on analysing a single tetrode, ther eis not a lot of info we really need about tetrodes
-    % because the meat of the data is really per cluster or part
-    % This is especially true now that cluster quality has been moved to gatDACQDATA, so that it doesn't have to be
-    % computed on every run of klustest. However, we will load the waveforms for this tetrode before continuing to the clusters
-    sdata = table; % will hold all the cluster data
-    bdata = table; % will hold all the behaviour data (most of it duplicated from pdata though)
-    for ee = 1:length(tetrodes) 
-        tet = tetrodes(ee); % tet = the current tetrode
-        disp(sprintf('\tLoading tetrode %d...',tet));
-
-        % get a vector of clusters we want to analyse
-        if isempty(config.clusters) || config.clusters==0
-            clus = unique(mtint.tetrode(tet).cut); % find the clusters logged for this tetrode
-        else
-            clus = config.clusters;
+    % Kilosort mainly ignores tetrodes and just assigns cluster IDs across 
+    % all available channels (even though we well it not to cluster across 
+    % tetrodes). So, in this loop we run through every unique cluster returned
+    % by kilosort and analyse its activity
+    for tt = 1:size(tets,1) % for every tetrode       
+        if tets(tt,2)==0 % tetrode
+            disp(sprintf('\tTetrode %d | %d of %d (%.f%%)',tets(tt,1),tt,size(tets,1),tt/size(tets,1)*100))
+        elseif tets(tt,2)==1 % stereotrode
+            disp(sprintf('\tStereotrode %d | %d of %d (%.f%%)',tets(tt,1),tt,size(tets,1),tt/size(tets,1)*100))
         end
-        pdata.clusters{tetrodes(ee)} = clus;
-
-        % check to see if there are any clusters
-        clus_count = numel(clus);   
-        disp(sprintf('\t\t...%d spikes detected',mtint.tetrode(tet).nspike_cut));
-        disp(sprintf('\t\t\t...%d data clusters detected',sum(clus~=0))); 
-        if ~clus_count || ~any(clus) % if there are no clusters, or if there is only a noise cluster
-            continue % skip analysis
-        end
-        disp(sprintf('\t\t\t\t...starting analysis'));
-
-        % get the channel waveforms for this tetrode    
-        if config.wave_asis
-            disp(sprintf('\t\t\t\t...getting waveforms'));                   
-            nspikes = mtint.tetrode(tet).nspike_cut;
-            waves = zeros(nspikes,50,4,'single');
-            rnow = 1;            
-            for ssn = 1:length(pdata.session_names)
-                fnamen = pdata.session_names{ssn};
-                [~,c1,c2,c3,c4,~] = get_SPIKESV([fnamen,'.',num2str(tet)]);               
-                waves(rnow:rnow+length(c1(:,1))-1,:,1) = c1;
-                waves(rnow:rnow+length(c2(:,1))-1,:,2) = c2;
-                waves(rnow:rnow+length(c3(:,1))-1,:,3) = c3;
-                waves(rnow:rnow+length(c4(:,1))-1,:,4) = c4;                
-                rnow = rnow+length(c4(:,1));
-            end
-        end
+        clu = clus{tt}; % clusters on this tetrode
+        clusters = unique(clu(clu>0)); % list on nonzero clusters
+        spt = pdata.spike_times{tt}; % spike times for this tetrode
+        wav_now = wav{tt}; % waveforms for this tetrode
         
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% For every detected cluster    
-        % The next loop focuses on analysing a single cluster from this tetrode, almost immediately we will skip it if
-        % the cluster is noise (i.e. cluster 0), in some cases it might be interesting to have that information, but as we
-        % dump all our noise spikes in cluster 0 this may be extraordinarily large, so it makes more sense to skip it for speed
+        if isempty(clusters)
+            disp(sprintf('\t\tno data clusters'))            
+        end
+        for cc = 1:length(clusters) % for every cluster               
+            disp(sprintf('\t\tcluster %d of %d (%.f%%): ',clusters(cc),length(clusters),cc/length(clusters)*100))
 
-        % get all the spike times for this tetrode
-        spiketime = double(mtint.tetrode(tet).ts);      
-        disp(sprintf('\t\t\t\t...analysing clusters'));                   
-    
-        loopout = looper(length(clus));
-        for cc = 1:length(clus) % for every cluster   
-            sdatac = table; % to hold this cluster's data
-            clu = clus(cc); % clu = the current cluster
-            uci = [config.rname '.' pdata.date '.' num2str(tet) '.' num2str(clu)]; % unique cell identifier - a string with [rat name, session date, electrode, cluster];
+            % The next loop focuses on dividing the data into its different parts 
+            % and analysing the cluster within each of these. The results are then 
+            % added to sdata_temp which will be concatenated with sdata at the end    
+            for pp = 1:nparts % for every part               
+                sdata_temp = table; % temporary table for this cluster
+                bdata_temp = table;
+                part_now = part_config.part_names{pp};
+                if pp==1; disp(sprintf('\b%s ',part_now)); else; disp(sprintf('\b| %s ',part_now)); end
 
-            % if this is the noise cluster don't continue any further
-            if ~clu      
-                loopout = looper(loopout);
-                continue
-            end
-            
-            % clu_indx is a logical vector, length = N of spikes, true if spike is in cluster clu, false if not
-            % mtint.tetrode.cut contains a vector specifying which spikes are in which cluster, each row corresponds to a tetrode
-            % so to get the data for one tetrode we need to do: mtint.tetrode(tetrode # we want).cut
-            clu_identity = mtint.tetrode(tet).cut; % clu_assign is a vector of numbers, one for each spike, each number corresponds to a cluster                        
-            clu_indx = clu_identity==clu;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% For each part  
-            % The next loop focuses on dividing the data into its different parts and analysing the cell within each of these
-            % The very first section deals with extracting the data relevant to this part. I've tried to keep this process
-            % logical so as to increase speed, the downside is that if there is a large amount of data this approach may fail
-            % due to a lack of memory. However, as the matrices are logical (i.e. 1 byte per value) I imagine this would require
-            % an enormous recording session with many intervals
-            part_names = pdata.part_config.Part;
-            for pp = 1:nparts % for every partition         
-                sdatap = table; % to hold cluster data for this part  
-                bdatap = table; % to hold behaviour data for this part
-                part_now = part_names{pp}; % the name of the current part
-                if ~isfield(pdata,part_now)
-                    continue
+                % cut the position data to include only this part
+                part_times = part_config.part_times{pp};                
+                if ~isfield(pdata,part_now) || ~isfield(pdata.(part_now),'pox')
+                    pos = pdata.pos;
+                    pot = pos.pot;
+                    pindax = logical(sum(pot' >= part_times(:,1) & pot' <= part_times(:,2),1));
+                    pdata.(part_now).pot = pos.pot(pindax,1); % pos time for this part            
+                    pdata.(part_now).pox = pos.pox(pindax,1); % pos x for this part
+                    pdata.(part_now).poy = pos.poy(pindax,1); % pos y for this part
+                    pdata.(part_now).poh = pos.poh(pindax,1); % pos (yaw) HD for this part
+                    pdata.(part_now).pod = pos.pod(pindax,1); % pos (yaw) HD for this part, estimated using displacement                  
+                    pdata.(part_now).pov = pos.pov(pindax,1); % velocity for this part
+                    pdata.(part_now).pav = pos.poa(pindax,1); % pos (yaw) AHV for this part
                 end
-                part_times = pdata.(part_now).times; % the time pairs (intervals) corresponding to this part
-        
-                % find what data falls into the intervals associated with this part
-                % start with positions (load existing ones if possible)
-                if isfield(pdata.(part_now),'pox')
-                    ppox = double(pdata.(part_now).pox); % pos x
-                    ppoy = double(pdata.(part_now).poy); % pos y
-                    ppot = double(pdata.(part_now).pot); % pos time
-                    ppov = double(pdata.(part_now).pov); % pos running speed
-                    ppoh = double(pdata.(part_now).poh); % pos HD      
-                    part_duration = pdata.(part_now).duration;                     
-                else
-                    pindax = logical(sum(pot' > part_times(:,1) & pot' < part_times(:,2),1));
-                    ppox = pox(pindax); % pos x
-                    ppoy = poy(pindax); % pos y
-                    ppot = pot(pindax); % pos time
-                    ppov = pov(pindax); % pos running speed
-                    ppoh = poh(pindax); % pos HD   
-                    part_duration = sum(pindax(:))*pdata.sampling_interval; 
+                ppot = pdata.(part_now).pot; % pos time for this part            
+                ppox = pdata.(part_now).pox; % pos x for this part
+                ppoy = pdata.(part_now).poy; % pos y for this part
+                ppoh = pdata.(part_now).poh; % pos (yaw) HD for this part
+                ppod = pdata.(part_now).pod; % pos (yaw) HD for this part, estimated using displacement                 
+                ppov = pdata.(part_now).pov; % velocity for this part
+                ppoa = pdata.(part_now).pav; % pos (yaw) AHV for this part
                     
-                    % accumulate
-                    pdata.(part_now).pox = single(ppox);
-                    pdata.(part_now).poy = single(ppoy);
-                    pdata.(part_now).pot = single(ppot); 
-                    pdata.(part_now).poh = single(ppoh); 
-                    pdata.(part_now).pov = single(ppov);
-                    pdata.(part_now).duration = part_duration;
+                % cut the spike data to include only this part and cluster
+                sindax = logical(sum(spt' > part_times(:,1) & spt' < part_times(:,2) & (clu==clusters(cc))',1)); % spikes                    
+                pspt = spt(sindax); % spike time for this part
+                sidx = knnsearch(ppot,pspt); % nearest neighbour in position data for every spike
+                pspx = ppox(sidx); % spike x for this part
+                pspy = ppoy(sidx); % spike y for this part
+                psph = ppoh(sidx); % spike HD for this part
+                pspd = ppod(sidx); % spike HD for this part, estimated using displacement 
+                %pspv = ppov(sidx); % spike velocity for this part (currently not needed)
+                pspa = ppoa(sidx); % spike AHV for this part             
+                
+                % accumulate data in sdata_temp
+                sdata_temp.rat = {pdata.rat}; % the rat number/name
+                sdata_temp.date = {pdata.date};
+                sdata_temp.partn = uint8(pp);
+                sdata_temp.dir = [pwd '\'];
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp = sdata_temp; % will hold behaviour data in table format
                 end
-
-                % spike data next
-                sindax = logical(sum(spiketime' > part_times(:,1) & spiketime' < part_times(:,2) & clu_indx',1)); % spikes
-                nindax = logical(sum(spiketime' > part_times(:,1) & spiketime' < part_times(:,2) & ~clu_identity',1)); % noise 
-                pspt = spiketime(sindax);
-                sidx = knnsearch(pot,pspt);
-                sidx2 = knnsearch(ppot,pspt);                
-                pspx = pox(sidx); % spike x
-                pspy = poy(sidx); % spike y
-                psph = poh(sidx); % direction
-                pspv = pov(sidx); % running speed                
-
-                % accumulate, these variables don't need to be preallocated as they should always be filled
-                sdatap.rat = {pdata.rat};
-                sdatap.date = str2double(pdata.date);
-                sdatap.directory = {pwd};
-                sdatap.partn = pp;
-                sdatap.part = {part_now};                
-                sdatap.uci = {uci};
-                sdatap.tet = tet;
-                sdatap.clu = clu;
-                sdatap.spike_index = {uint32(sidx)}; % this index can be used to get the spike values from the position data values i.e. pdata.(part_now).pox(sdata.spike_index) would be the spike X positions
-                sdatap.part_spike_index = {uint32(sidx2)}; % this index can be used to get the spike values from the position data values i.e. pdata.(part_now).pox(sdata.spike_index) would be the spike X positions                
-                sdatap.spike_times = {double(pspt)}; % the actual spike times
-                sdatap.isod = mtint.clu_quality(tet).isolation_distances(clu);
-                sdatap.lratio = mtint.clu_quality(tet).lratios(clu);
-                sdatap.spikes = numel(pspx);
-                sdatap.duration = part_duration;
-                sdatap.frate = numel(pspx) / part_duration;
-                minspikes = 1; % the minimum number of spikes a cluster has to have before we do the following analyses
-                pdata.minspikes = minspikes;
-                
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Waveforms
-                % all waveforms for this electrode are loaded above by getSPIKESV, but we want only the waveforms
-                % corresponding to this cluster and part, which is what this section is for
-                % The waveforms are sadly not saved anywhere because they would take up a lot of space (minimum 100mb)
-                % so instead we have to just load them from the spike files every time we run klustest
-                % Instead we save the mean +/- SD for each channel as a representation of the cluster
-                
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'waveform_mean',cell(1,4),'waveform_stdv',cell(1,4),'waveform_rms',NaN(1,4),'waveform_snr',NaN(1,4),'waveform_max',NaN(1,4),'waveform_min',NaN(1,4),'waveform_maxt',NaN(1,4),'waveform_mint',NaN(1,4),'waveform_width',NaN(1,4),'waveform_params',NaN(1,2),'waveform_snrs',NaN(1,4));
-
-                % get the waveforms for this cluster   
-                if config.wave_asis && numel(pspx)>minspikes
-                    waves2 = waves(sindax,:,:);
-                    for w = 1:4 % for every recording channel
-                        wav = double(waves2(:,:,w));
-                        ch = nanmean(wav,1);
-                        chs = nanstd(wav,[],1);
-                        chrms = nanmean(rms(wav,1));
-                        nsrms = nanmean(rms(waves(nindax,:,w),1));
-                        [maxval,maxt] = max(ch);
-                        [postminval,postmint] = min(ch(maxt:end));
-                        postmint = postmint + maxt - 1;
-                        width = postmint - maxt;
-                        width = width * (1000/50); 
-
-                        sdatap.waveform_mean(1,w) = {ch};
-                        sdatap.waveform_stdv(1,w) = {chs};
-                        sdatap.waveform_rms(1,w) = chrms;  
-                        sdatap.waveform_snr(1,w) = chrms/nsrms; % https://en.wikipedia.org/wiki/Signal-to-noise_ratio                       
-                        sdatap.waveform_max(1,w) = maxval;
-                        sdatap.waveform_min(1,w) = postminval;   
-                        sdatap.waveform_maxt(1,w) = maxt;
-                        sdatap.waveform_mint(1,w) = postmint;                         
-                        sdatap.waveform_width(1,w) = width;
-                        
-                        % signal to noise Liu et al. (2014) Quality Metrics of Spike Sorting Using Neighborhood Components Analysis
-                        % https://dx.doi.org/10.2174%2F1874120701408010060
-                        snrs = 1/size(wav,1) .* nansum((nanmax(wav,[],2)-nanmin(wav,[],2)) ./ (2.*nanstd(wav-nanmean(wav,1),[],2)));
-                        sdatap.waveform_snrs(1,w) = snrs;
-                    end
-
-                    % get the cell's width of waveform using the waveform with the highest mean amplitude
-                    [amp,idx] = max(sdatap.waveform_max);
-                    wow = sdatap.waveform_width(1,idx);
-                    sdatap.waveform_params(1,:) = [amp wow]; % accumulate data
-                    clear waves2 sindax pindax % clear all the waveform data, we don't need it again and it is quite large
+                if tets(tt,2)==0 % tetrode
+                    uci = ['uci_' rname '_' pdata.date '_t' num2str(tets(tt,1)) '_c' num2str(clusters(cc))]; % unique cell identifier - a string with [rat name, session date, electrode, cluster];
+                elseif tets(tt,2)==1 % stereotrode
+                    uci = ['uci_' rname '_' pdata.date '_s' num2str(tets(tt,1)) '_c' num2str(clusters(cc))]; % unique cell identifier - a string with [rat name, session date, electrode, cluster];
                 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Ratemap, dwellmap, spatial analyses, grid analyses, overdispersion
-                % place field, gridness and overdispersion analyses all require a firing rate map
-                % so they are combined here in the same loop where the firing rate map is generated
-                % firing rate maps are generated by mapDATA which can utilise a number of different methods
-                % it will also accept a previously computed dwellmap to speed up computation
+                sdata_temp.uci = {uci};
+                sdata_temp.tetrode = uint8(tets(tt,1)); 
+                sdata_temp.electrode = uint8(tets(tt,2));                
+                sdata_temp.cluster = uint8(clusters(cc)); % the index of the cluster in Phy format (number assigned to cluster in Phy, may not start at zero, may have gaps etc)
+                sdata_temp.spt_pot_index = {uint64(sidx)}; % this index can be used to get the spike values from the position data values i.e. pdata.(part_now).pox(sdata.spike_index)
+                sdata_temp.spike_times = {single(pspt)}; % the actual spike times, single should be fine as spike times are sampled at 32kHz
+                sdata_temp.nspikes = numel(pspx);
+                sdata_temp.frate = numel(pspx) / (numel(ppot)*(1/pos_srate));           
+                inow = isods{tt};
+                sdata_temp.isod = inow(cc,:); % cluster quality [isolation distance, lratio]
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.pos = { single([ppot(:) ppox(:) ppoy(:) ppoh(:) ppov(:) ppoa(:) ppod]) };
+                end                               
                 
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'ratemap',cell(1,1),'spatial_info_bsec',NaN,'spatial_info_bspike',NaN,'mutual_info',NaN,'sparsity',NaN,'spatial_coherence',NaN);
-                sdatap = addToTable(sdatap,'place_fields',NaN,'field_area',cell(1,1),'field_centroids',cell(1,1),'field_weight_centroids',cell(1,1),'field_maj_lengths',cell(1,1),'field_min_lengths',cell(1,1),'field_orientations',cell(1,1),'field_snr',cell(1,1));
-                sdatap = addToTable(sdatap,'grid_autocorrelation',cell(1,1),'grid_score',NaN,'grid_score2',NaN,'grid_wavelength',NaN,'grid_radius',NaN,'grid_orientation',NaN,'grid_mask',cell(1,1));
-                sdatap = addToTable(sdatap,'over_dispersion_z',cell(1,1),'over_dispersion',NaN,'over_dispersion_r',NaN);
-                          
-                if (config.fild_asis || config.grid_asis || config.ovrd_asis) && numel(pspx)>minspikes % if we want to analyse place fields, grid cells or overdispersion
-                    config.dwellmap = [];
-                    if isfield(pdata.(part_now),'dwellmap') % if a previously computed dwellmap exists, use this to save time
-                        config.dwellmap = pdata.(part_now).dwellmap;
-                    end
-                    % This function incorporates a number of different methods for generating firing rate maps and you can check the function for detailed descriptions of these
-                    % my favourite is the method proposed by Leutgeb et al. (2005) Independent Codes for Spatial and Episodic Memory in Hippocampal Neuronal Ensembles
-                    % https://doi.org/10.1126/science.1114037
-                    % although the fastest method is 'nearest' as this is just a straight binning method followed by smoothing, so it is the default
-                    [ratemap,dwellmap,~,config,mapdata] = mapDATA([ppox ppoy],[pspx pspy],config);
+%%%%%%%%%%%%%%%% Waveform data
+                nch = size(wav_now,2);
+                mxs = NaN(nch,1);
+                wav_means = NaN(4,size(wav_now,1));
+                wav_stds = NaN(4,size(wav_now,1));  
+                wav_now_clus = cell(1,4);
+                for ww = 1:nch % for every channel
+                    wav_now_clus{ww} = squeeze(wav_now(:,ww,sindax))'; % should be [spikes x samples]
+                    wav_means(ww,:) = mean(wav_now_clus{ww},1,'omitnan');
+                    wav_stds(ww,:) = std(double(wav_now_clus{ww}),[],1,'omitnan');
+                    mxs(ww,1) = max(wav_means(ww,:),[],'omitnan');
+                end
+                [~,widx] = sort(mxs,'descend','MissingPlacement','last'); % sort from largest > smallest waveform
+                max_wav_means = wav_means(widx,:);
+                max_wav_stds = wav_stds(widx,:);
+                max_wav_mxs = mxs(widx);
 
-%% ########## %% ratemap analysis
-                    % This function incorporates a number of different analyses and you can check the function for detailed descriptions of these
-                    % I will point out that the spatial information content value provided by this function is calculated as in 
-                    % Skaggs et al. (1996) Theta Phase Precession in Hippocampal Neuronal Populations and the Compression of Temporal Sequences
-                    % https://doi.org/10.1002/(SICI)1098-1063(1996)6:2%3C149::AID-HIPO6%3E3.0.CO;2-K
-                    % I note this because the method differs slightly between papers and I have found this one reflects the data the best
-                    spatm = spatialMETRICS(ratemap,dwellmap);
-                    
-                    % accumulate data         
-                    pdata.(part_now).dwellmap = single(dwellmap);
-                    sdatap = addToTable(sdatap,'ratemap',{single(ratemap)},'spatial_info_bsec',spatm.spatial_information,'spatial_info_bspike',spatm.spatial_information_perspike,'mutual_info',spatm.mutual_info,'sparsity',spatm.sparsity,'spatial_coherence',spatm.spatial_coherence);
+                % use the waveform with the largest amplitude to calculate wave characteristics
+                wnow = max_wav_means(1,:);
+                [~,maxvalt] = max(wnow);
+                wnow(1:maxvalt) = NaN;
+                [minval,minvalt] = min(wnow,[],'omitnan');
+                width_ms = (minvalt - maxvalt) * (1/spk_srate) * 1e03; % waveform width in ms
 
-%% ########## %% place field analysis
-                    % this analysis is pretty standard and is based on what I used before, a good citation would be:
-                    % Park, Dvorak and Fenton (2011) Ensemble Place Codes in Hippocampus: CA1, CA3, and Dentate Gyrus Place Cells Have Multiple Place Fields in Large Environments
-                    % "A place field was defined as any contiguous set of 9 or more pixels with greater that 0 AP/s firing rate that shared at least one side with another pixel in the field."
-                    % https://dx.doi.org/10.1371%2Fjournal.pone.0022349
-                    [fieldd,nfields] = getPFIELDS(ratemap,config.frcut,config.minfr,config.arcut);
-                    % Although this function will take a minimum firing rate (i.e. replace the 0 AP/s) and I do tend to use 1Hz for that
+                % accumulate data in sdata_temp
+                sdata_temp.wave_width = single(width_ms);
+                sdata_temp.wave_amps = int16(mxs(1));
+                sdata_temp.wave_mean = { int16(wav_means) };
+                sdata_temp.wave_std = { int16(wav_stds) };
+                %pdata.wavtime = (( 1:size(wav_now,1) ) -8 ) * (1/spk_srate) * 1e03; % waveform samples, converted to seconds, then microseconds
 
-                    % accumulate data
-                    sdatap = addToTable(sdatap,'place_fields',nfields,'field_area',{fieldd.Area},'field_centroids',{fieldd.Centroid},'field_weight_centroids',{fieldd.WeightedCentroid},'field_maj_lengths',{fieldd.MajorAxisLength},'field_min_lengths',{fieldd.MinorAxisLength},'field_orientations',{fieldd.Orientation},'field_snr',{fieldd.signal_to_noise});
-                    
-%% ########## %% grid characteristic analysis
-                    if config.grid_asis          
-                        % create autocorrelation
-                        % I'm not entirely sure who to attribute this to, but autocorrelations are pretty ubiquitous now
-                        % this function was adapted from xPearson (adapted for speed and to make it work on n-dimensions)
-                        automap = ndautoCORR(ratemap,ratemap,50);
-
-                        % autocorrelation analysis
-                        % There are a number of different grid score approaches contained here so see the function itself for a description
-                        % my preferred method is the default, which is from Langston et al. (2010) Development of the Spatial Representation System in the Rat
-                        % In this method rings are cut from the autocorrelation at different distances from the centre and the standard rotation and correlation
-                        % is performed on each one. The highest of these grid scores is used, the radius of the ring is the grid spacing. A sine wave
-                        % is fitted to the values in the ring and this is used to estimate the positions of the fields. The grid orientation is the
-                        % angle from the centre to the first one of these fields, counter-clockwise. The grid field radius is taken as the radius of the centre field.
-                        [~,gdata] = gridSCORE(automap);
-                        
-                        % accumulate data
-                        sdatap = addToTable(sdatap,'grid_autocorrelation',{single(automap)},'grid_score',gdata.g_score,'grid_score2',gdata.g_score2,'grid_wavelength',gdata.wavelength,'grid_radius',gdata.radius,'grid_orientation',gdata.orientation,'grid_mask',{gdata.ring_mask});
-                    end            
-
-%% ########## %% Overdispersion analysis              
-                    if config.ovrd_asis
-                        % Taken from: Fenton et al. (2010) Attention-like modulation of hippocampus place cell discharge
-                        % "In the first method, the entire session was divided into 5-sec intervals. For each interval we calculated the expected number of spikes, exp, as [equation in paper]
-                        % where ri is the time-averaged rate at location i, and ti is the time spent in location i during the pass. Only intervals during which exp ? 5.0 AP were 
-                        % used to calculate overdispersion since the overall firing rate of place cells is ~1.0 AP/sec.
-                        % For each selected 5-sec interval, we then calculated z, the normalized standard deviation of obs, the observed number of spikes as [equation in paper]
-                        % z measures the deviation of observed discharge from expected in standard deviation units. Overdispersion in turn is the variance of 
-                        % the z distribution for a set of passes. The outcome of this calculation was found to be indistinguishable from the somewhat different 
-                        % method previously used (Fenton and Muller, 1998)."
-                        % https://doi.org/10.1523/JNEUROSCI.5576-09.2010
-                        [overz,overd,overr] = getOVERDISPERSE([mapdata.poxnew mapdata.poynew],ppot,pspt,ratemap);
-                        % essentially we compare the instantaneous firing of the cell at every position to the firing we would expect at that position according to the firing rate map
-                        % the overdispersion z is the deviation of the expected from the observed, the overdispersion value is the standard deviation of this distribution
-                
-                        % accumulate data
-                        sdatap = addToTable(sdatap,'over_dispersion_z',{overz},'over_dispersion',overd,'over_dispersion_r',overr);
+%%%%%%%%%%%%%%%% Firing rate map
+                % This function incorporates a number of different methods for generating firing rate maps and you can check the function for detailed descriptions of these
+                % my favourite is the method proposed by Leutgeb et al. (2005) Independent Codes for Spatial and Episodic Memory in Hippocampal Neuronal Ensembles
+                % https://doi.org/10.1126/science.1114037
+                % although the fastest method is 'histogram' as this is just a straight binning method followed by smoothing, so it is the default
+                speedlift = [];
+                if isfield(pdata,part_now)
+                    if isfield(pdata.(part_now),'speedlift')
+                        speedlift = pdata.(part_now).speedlift;
                     end
                 end
+                rmset = mapset;
+                pos = [ppox ppoy].*10;
+                spk = [pspx pspy].*10;
+                rmset.maplims = [min(pos(:,1)) min(pos(:,2)) max(pos(:,1)) max(pos(:,2))]; 
+                rmset.srate = pos_srate;
+                [ratemap,dwellmap,spikemap,~,speedlift] = rate_mapper(pos,spk,rmset,speedlift);         
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% HD analyses    
+                % Skaggs spatial information content (bits per second)
+                % Skaggs et al. (1996) Theta Phase Precession in Hippocampal Neuronal Populations and the Compression of Temporal Sequences
+                % https://onlinelibrary.wiley.com/doi/epdf/10.1002/%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K
+                % Markus et al. (1994) Spatial information content and reliability of hippocampal CA1 neurons: effects of visual input
+                % https://onlinelibrary.wiley.com/doi/epdf/10.1002/hipo.450040404
+                pr = dwellmap ./ sum(dwellmap(:),'omitnan'); % dwell time probability
+                ro = sum(ratemap(:) .* pr(:),'omitnan'); % overall firing rate
+                si = sum(pr(:) .* (ratemap(:)./ro) .* log2(ratemap(:)./ro),'omitnan'); 
+
+                % Skaggs spatial information content (bits per spike)
+                % From Skaggs et al. (1996) Theta Phase Precession in Hippocampal Neuronal Populations and the Compression of Temporal Sequences
+                % The information rate given by formula (1) is measured in bits per second. If it is
+                % divided by the overall mean ring rate of the cell (expressed in spikes per second),
+                % then a different kind of information rate is obtained, in units of bits per spike|let us
+                % call it the information per spike. This is a measure of the specificity of the cell: the
+                % more grandmotherish" the cell, the more information per spike. 
+                sis = si ./ ro;
+
+                % Sparsity
+                % From Skaggs et al. (1996) Theta Phase Precession in Hippocampal Neuronal Populations and the Compression of Temporal Sequences
+                % The sparsity measure is  an adaptation  to space of  a formula invented by Treves and Rolls (1 99 1); the adaptation measures the 
+                % fraction of the environment  in which a cell  is active. Intuitively, a sparsity of, say, 0.1 means that the place field of the cell 
+                % occupies 1/10 of the area the rat traverses.
+                sp = (sum(pr(:).*ratemap(:),'omitnan').^2) ./ (sum(pr(:).*(ratemap(:).^2),'omitnan'));            
+
+                % Spatial Coherence (Cacucci et al. 2007)
+                % https://dx.doi.org/10.1523%2FJNEUROSCI.1704-07.2007
+                % The spatial coherence for each firing rate map was computed as the mean correlation between the firing rate of each bin with the 
+                % aggregate rate of the 24 nearest bins.
+                meanf = ones([5 5]);
+                meanf(3,3) = 0;
+                U = imfilter(ratemap,meanf,0,'same','conv');
+                cohe = corr(ratemap(:),U(:),'rows','pairwise','type','Pearson');            
+
+                % accumulate data
+                sdata_temp.ratemap = { single(ratemap) };
+                sdata_temp.spikemap = { single(spikemap) };
+                sdata_temp.spatial_info = [si sis sp cohe]; % [spatial info (b/s), spatial info (b/sp), sparsity, coherence]
+                pdata.(part_now).dwellmap = single(dwellmap);
+                pdata.(part_now).speedlift = speedlift;
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.dwellmap = { pdata.(part_now).dwellmap };
+                end 
+
+%%%%%%%%%%%%%%%% Place fields
+                % threshold ratemap
+                zmap = ( ratemap - mean(ratemap(:),'omitnan') ) / std(ratemap(:),'omitnan'); % zscore ratemap
+                thresh_ratemap = imbinarize(zmap,mapset.zcut); % 2 s.d. threshold
+                
+                % detect contiguous regions
+                datout = regionprops('table',thresh_ratemap,zmap,'Area','Centroid','WeightedCentroid','MajorAxisLength','MinorAxisLength','Orientation','ConvexHull','PixelIdxList','MaxIntensity');
+                
+                % filter out small or low firing regions
+                if ~isempty(datout)
+                    datout.Area(:) = datout.Area(:) .* ((mapset.binsize/10)^2); % convert field area to cm2
+                    nindx = datout.Area(:) < mapset.arcut | datout.MaxIntensity(:) < mapset.frcut;                        
+                    datout(nindx,:) = [];      
+                end
+
+                % accumulate data
+                sdata_temp.nfields = size(datout.Area,1);
+                sdata_temp.field_data = { table2cell(datout) };
+
+%%%%%%%%%%%%%%%% Grid score
+                % create autocorrelation
+                % I'm not entirely sure who to attribute this to, but autocorrelations are pretty ubiquitous now
+                % this function was adapted from xPearson (adapted for speed and to make it work on n-dimensions)
+                automap = ndautoCORR(ratemap,ratemap,50);
+
+                % autocorrelation analysis
+                % There are a number of different grid score approaches contained here so see the function itself for a description
+                % my preferred method is the default, which is from Langston et al. (2010) Development of the Spatial Representation System in the Rat
+                % In this method rings are cut from the autocorrelation at different distances from the centre and the standard rotation and correlation
+                % is performed on each one. The highest of these grid scores is used, the radius of the ring is the grid spacing. A sine wave
+                % is fitted to the values in the ring and this is used to estimate the positions of the fields. The grid orientation is the
+                % angle from the centre to the first one of these fields, counter-clockwise. The grid field radius is taken as the radius of the centre field.
+                [~,gdata] = get_grid_score(automap,mapset.binsize/10,'method','allen');
+
+                % accumulate data
+                sdata_temp.gridmap = { single(automap) };
+                sdata_temp.grid_info = single([gdata.grid_score gdata.wavelength gdata.grid_orientation]);
+                sdata_temp.grid_field_info = single([gdata.radius gdata.majaxislength gdata.minaxislength gdata.height gdata.width gdata.field_orientation]); 
+
+%%%%%%%%%%%%%%%% HD and Rayleigh vector length
                 % HD firing rate maps are now computed by mapHD, like the above it will accept a precomputed
                 % dwell time map to speed up computation
                 % rayleigh vector values etc are computed on sum normalised HD firing rate maps to remove
                 % any possible effects of firing rate (it's unclear if circ_stats care about the values)
                 % If you recorded HD using two LEDs this should be used here and throughout the data
                 % if not, HD is estimated using the animal's displacement
-                
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'hd_spikemap',cell(1,1),'hd_ratemap',cell(1,1),'hd_rayleigh',NaN,'hd_max',NaN,'hd_mean',NaN,'hd_stdev',NaN);
-
-                if config.head_asis && numel(pspx)>minspikes
-                    % Load a head direction dwell map if one exists, or create it if not
+                % Load a head direction dwell map if one exists, or create it if not
+                hd_dwellmap = [];
+                if isfield(pdata,part_now)
                     if isfield(pdata.(part_now),'hd_dwellmap')
-                        hd_dwell = pdata.(part_now).hd_dwellmap;
-                        [~,~,hd_spikemap,hd_ratemap,r,mx,mn,sd] = mapHD(hd_dwell,ppoh,psph,config);
-                    else
-                        [~,hd_dwellmap,hd_spikemap,hd_ratemap,r,mx,mn,sd] = mapHD([],ppoh,psph,config);
-                        pdata.(part_now).hd_dwellmap = single(hd_dwellmap);
-                    end                
-
-                    % accumulate data
-                    sdatap = addToTable(sdatap,'hd_spikemap',{single(hd_spikemap(:))},'hd_ratemap',{single(hd_ratemap(:))},'hd_rayleigh',r,'hd_max',mx(1),'hd_mean',mn,'hd_stdev',sd);
-                end
-          
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Spike theta phase analyses   
-                % By default any LFP analyses in klustest make use of the first LFP channel contained in
-                % the mtint (i.e. LFP channel 1 in dacqUSB)
-                % This can be changed at the top of klustest if you want, but it will crash if the LFP file does not
-                % exist. Ideally the 'best' LFP channel would be used, where 'best' would be defined as the 
-                % channel with the strongest theta or something. But for speed, we are just using the 1st one here
+                        hd_dwellmap = pdata.(part_now).hd_dwellmap;
+                    end
+                end      
                 
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'theta_phase_mean',NaN,'theta_phase_r',NaN,'theta_phase_max',NaN,'theta_phase_dist',cell(1,1));
+                ppoh_map = ppoh;   
+                psph_map = psph;
+                if mapset.hd_displace
+                    ppoh_map = ppod;
+                    psph_map = pspd;                    
+                end
+                [~,hd_dwellmap,hd_spikemap,hd_ratemap,r,mx,mn,sd] = mapHD(hd_dwellmap,ppoh_map,psph_map,mapset);
 
-                if config.spph_asis && numel(pspx)>minspikes
+                % accumulate data
+                sdata_temp.hd_ratemap = { single(hd_ratemap) };               
+                sdata_temp.hd_info = single([r mx(1) mn sd]); % Rayleigh v, PFD (angle with highest firing), mean angle (norm circ mean), SD of firing (norm circ stdev)
+                pdata.(part_now).hd_dwellmap = hd_dwellmap;
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.hd_dwellmap = { pdata.(part_now).hd_dwellmap };
+                end 
+                
+                % half maps
+                midpoint = median(ppot(:));
+                hd_dwellmap_h1 = [];
+                hd_dwellmap_h2 = [];                
+                if isfield(pdata,part_now)
+                    if isfield(pdata.(part_now),'hd_dwellmap_half1')
+                        hd_dwellmap_h1 = pdata.(part_now).hd_dwellmap_half1;
+                        hd_dwellmap_h2 = pdata.(part_now).hd_dwellmap_half2;                        
+                    end
+                end      
+                [~,hd_dwellmap_h1,~,hd_ratemap_h1,r_h1,mx_h1,mn_h1,sd_h1] = mapHD(hd_dwellmap_h1,ppoh_map(ppot<midpoint),psph_map(pspt<midpoint),mapset); % first half HD map
+                [~,hd_dwellmap_h2,~,hd_ratemap_h2,r_h2,mx_h2,mn_h2,sd_h2] = mapHD(hd_dwellmap_h2,ppoh_map(ppot>midpoint),psph_map(pspt>midpoint),mapset); % second half HD map
+
+                % accumulate data
+                sdata_temp.hd_ratemap_half = { single(hd_ratemap_h1) single(hd_ratemap_h2) };               
+                sdata_temp.hd_info_half = single([r_h1 mx_h1(1) mn_h1 sd_h1 r_h2 mx_h2(1) mn_h2 sd_h2]); % Rayleigh v, PFD (angle with highest firing), mean angle (norm circ mean), SD of firing (norm circ stdev)
+                pdata.(part_now).hd_dwellmap_half1 = hd_dwellmap_h1;
+                pdata.(part_now).hd_dwellmap_half2 = hd_dwellmap_h2;    
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.hd_dwellmap_half = { pdata.(part_now).hd_dwellmap_half1 pdata.(part_now).hd_dwellmap_half2 };
+                end 
+
+%%%%%%%%%%%%%%%% Spatial info, grid score, Rayleigh vector shuffles               
+                % spatial shuffles
+                if spatial_shuffles
+                    sinfo = savelli_shuffle(ppox.*10,ppoy.*10,ppot,ppoh,pspt,sidx,rmset,100);
+                    obs_vals = [sdata_temp.spatial_info(1) mean(table2array(sinfo(:,2)),1,'omitmissing') sdata_temp.hd_info(1)];
+                    [z,p] = computeZProbability(obs_vals,table2array(sinfo(:,4:6)));
+                    sdata_temp.spatial_info_z = z; % [spatial info (z), grid score (z), Rayleigh vector (z)]
+                    sdata_temp.spatial_info_p = p; % [spatial info (p), grid score (p), Rayleigh vector (p)]
+                else
+                    sdata_temp.spatial_info_z = NaN(1,3); % [spatial info (z), grid score (z), Rayleigh vector (z)]
+                    sdata_temp.spatial_info_p = NaN(1,3); % [spatial info (p), grid score (p), Rayleigh vector (p)]
+                end                
+
+%%%%%%%%%%%%%%%% AHV analysis
+                ahv_window = 200;
+                ahv_binsize = 2;
+                ahv_mindwell = (1/pos_srate);
+                ahv_smoo = 0;
+                edg = -ahv_window : ahv_binsize : ahv_window;
+                xi = movmean(edg,2,'EndPoints','discard');
+                ahv_dwellmap = histcounts(ppoa,edg);
+                if ahv_smoo>0
+                    ahv_dwellmap = imgaussfilt(ahv_dwellmap,ahv_smoo,'Padding','replicate');
+                end
+                ahv_dwellmap(ahv_dwellmap<ahv_mindwell) = NaN;
+            
+                % bin spike ahv into ahv_binsize bins
+                ahv_spikemap = histcounts(pspa,edg);
+                if ahv_smoo>0
+                    ahv_spikemap = imgaussfilt(ahv_spikemap,ahv_smoo,'Padding','replicate');
+                end
+            
+                % ahv ratemap
+                ahv_ratemap = ahv_spikemap ./ (ahv_dwellmap .* (1/pos_srate));
+            
+                % accumulate data
+                sdata_temp.ahv_curve = { single(ahv_ratemap(:)) };             
+                pdata.ahv_xvalues = single(xi);    
+                pdata.(part_now).ahv_dwell = single(ahv_dwellmap);
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.ahv_dwellmap = { pdata.(part_now).ahv_dwell };
+                end 
+            
+%%%%%%%%%%%%%%%% Theta phase preference
+                if ~isempty(lfp)
                     % bin the theta phase data
                     ai = reshape(deg2rad(-180:5:540),[],1); % doing this means we have bins symmetrical around zero
-                    
-                    % we must calculate the spike phase here precisely for every spike time, rather than indexing into the position thet phase
+
+                    % we must calculate the spike phase here precisely for every spike time, rather than indexing into the position theta phase
                     % this is for reasons of resolution (LFP and spikes are sampled at 48kHz positions are only sampled at 50Hz)
                     % This process is fairly well established:
                     % "To obtain a theta phase angle for each spike, LFPs were first bandpass filtered (fourth-order Chebyshev, r = 0.5, MATLAB 
-                    % filter and filtfilt routines; 6–10 Hz) before a Hilbert transform was applied to obtain the instantaneous phase angle."
-                    % from van der Meer and Redish (2011) Theta Phase Precession in Rat Ventral Striatum Links Place and Reward Information (https://doi.org/10.1523/JNEUROSCI.4869-10.2011)             
-                    h = hilbert(lftheta);
-                    phase = mod(angle(h),2*pi);  
-                    pspp = interp1(lfpt(:),phase,'nearest');
-                    spp2 = reshape([pspp; (pspp+2*pi)],[],1);
-                    yi = histcounts(spp2,ai);
-                    
+                    % filter and filtfilt routines; 6â€“10 Hz) before a Hilbert transform was applied to obtain the instantaneous phase angle."
+                    % from van der Meer and Redish (2011) Theta Phase Precession in Rat Ventral Striatum Links Place and Reward Information (https://doi.org/10.1523/JNEUROSCI.4869-10.2011)              
+                    pspp = interp1(lfp(:,2),lfp(:,3),pspt,'nearest');
+                    spp2 = [pspp(:)-2*pi; pspp(:); pspp(:)+2*pi]; % repeat phase values at +/-360 degrees
+                    y = histcounts(spp2,ai); % bin phase values
+
                     % directional analyses on phase data
-                    mx2p = ai(yi == max(yi)); % preferred angle (location of max frate)
+                    mx2p = ai(y == max(y)); % preferred angle (location of max frate)
 
                     % accumulate data
-                    sdatap = addToTable(sdatap,'theta_phase_mean',circ_mean(pspp),'theta_phase_r',circ_r(pspp(:)),'theta_phase_max',mx2p(1),'theta_phase_dist',{yi});
+                    sdata_temp.theta_phase = { single(y) }; 
+                    sdata_temp.theta_info = single([circ_r(pspp(:)) mx2p(1) circ_mean(pspp)]); % Rayleigh v, preferred phase (bin with max count), mean angle (average phase) 
+                else
+                    sdata_temp.theta_phase = { NaN }; 
+                    sdata_temp.theta_info = NaN(1,3,'single');                   
                 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
-%% ################################################################# %% Inter-spike interval analyses, theta and bursting analyses, refractory period analyses   
-                % ISI analyses are quick and there shouldn't really be any reason to need to disable them,
-                % however, it is assumed here that if you don't want refractory period or theta autocorrelogram analyses
-                % ISI analyses are not required. The intrinsic theta fit can be seen in the klustest figure output
-                % as a red line fitted to the theta spike autocorrelogram
-                % This can also be used in combination with the frequency of global (LFP) theta as an indication of phase precession
                 
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'isi_dist',cell(1,1),'isi_fdist',cell(1,1),'isi_fwhmx',NaN,'isi_half_width',NaN(1,4));
-                sdatap = addToTable(sdatap,'burst_index',NaN,'burst_length_median',NaN,'burst_length_mean',NaN);
-                sdatap = addToTable(sdatap,'intrinsic_theta_index',NaN,'intrinsic_theta_frequency',NaN,'intrinsic_theta_fit',NaN,'t500_spike_autocorr',cell(1,1),'t500_spike_autofit',cell(1,1));
-                sdatap = addToTable(sdatap,'rpv_total',NaN,'rpv_proportion',NaN,'rpv_false_positive1',NaN,'rpv_false_positive2',NaN,'rpv_censored',NaN,'t25_spike_autocorr',cell(1,1));
+%%%%%%%%%%%%%%%% ISI and autocorrelation analyses
+                %% inter-spike interval
+                % [~,idata,isis] = getISIhalfwidth(pspt,100);
+                [f,xi,e,edg] = compute_hoisa(pspt,'spt2',pspt,'binsize',1,'window',50,'method','isih');
 
-                if config.sisi_asis && numel(pspx)>minspikes           
-%% ########## %% inter-spike interval
-                    % I don't remember exactly where I took this analysis from, but extracting the full width at half maximum is a fairly striahgtforward
-                    % concept so I don't think it requires citation.
-                    [~,idata,isis] = getISIhalfwidth(pspt);
+                % accumulate data
+                sdata_temp.isi = { f }; 
+                sdata_temp.isi_info = single([ NaN ]); 
+                pdata.isi_xvalues = single(xi);
 
-                    % accumulate data
-                    if isnan(idata.fwhmx) 
-                        sdatap = addToTable(sdatap,'isi_dist',{NaN(1,101,'single')},'isi_fdist',{NaN(1,101,'single')},'isi_fwhmx',idata.fwhmx,'isi_half_width',NaN(1,4));
-                    else
-                        sdatap = addToTable(sdatap,'isi_dist',{single(interp1(idata.adist(:,1),idata.adist(:,2),0:0.5:50))},'isi_fdist',{single(interp1(idata.fdist(:,1),idata.fdist(:,2),0:0.5:50))},'isi_fwhmx',idata.fwhmx,'isi_half_width',[idata.half_max idata.fdist(idata.hwidth_ps,1)']);  
-                    end
+                %% burst index
+                % from Mizuseki et al. (2012) Activity Dynamics and Behavioral Correlates of CA3 and CA1 Hippocampal Pyramidal Neurons 
+                % "The spike-burst index was defined as the fraction of spikes with <6 ms ISIs (Harris et al., 2001)"
+                % https://doi.org/10.1002/hipo.22002  
+                isis = diff(pspt) .* 1e3; % ISIs in ms
+                bindx = [isis; NaN] < 6 | [NaN; isis] < 6; % bindx is an index of all spikes sharing an isi less than 6ms
+                burst_index = sum(bindx) / numel(pspt);
 
-%% ########## %% burst index
-                    % from Mizuseki et al. (2012) Activity Dynamics and Behavioral Correlates of CA3 and CA1 Hippocampal Pyramidal Neurons 
-                    % "The spike-burst index was defined as the fraction of spikes with <6 ms ISIs (Harris et al., 2001)"
-                    % https://doi.org/10.1002/hipo.22002
-                    bindx = zeros(size(pspt));
-                    bindx([isis; NaN] < 6 | [NaN; isis] < 6) = 1; % bindx is an index of all spikes sharing an isi less than 6ms
-                    bindx = logical(bindx);
-                    burst_index = sum(bindx) / numel(pspt);
-                    sts = regionprops(bindx,'Area');
+                % accumulate data
+                sdata_temp.burst_index = single(burst_index); 
 
-                    % accumulate data
-                    sdatap = addToTable(sdatap,'burst_index',burst_index,'burst_length_median',nanmedian([sts.Area].'),'burst_length_mean',nanmean([sts.Area].'));
+                %% theta   
+                [f,xi,e,edg] = compute_hoisa(pspt,'spt2',pspt,'binsize',10,'window',500,'method','hoisa');
 
-%% ########## %% Intrinsic theta    
-                    % from van der Meer and Redish (2011) Theta Phase Precession in Rat Ventral Striatum Links Place and Reward Information
-                    % "To quantify the degree and frequency of theta modulation in single cells, we used the method used by Royer et al. (2010). 
-                    % First we computed the autocorrelogram of the cell, in 10 ms bins from -500 to +500 ms, normalized it to the maximum value
-                    % between 100 and 150 ms (corresponding to theta modulation), and clipped all values above 1. Then we fit the following function [function in paper]
-                    % where t is the autocorrelogram time lag, and a-c, w, and t1–2 were fit using the fminsearch optimization function in MATLAB. A measure
-                    % of theta modulation strength, the “theta index,” was defined as a/b, which intuitively corresponds to the ratio of the sine fit relative to
-                    % the baseline in the autocorrelogram."
-                    % https://doi.org/10.1523/JNEUROSCI.4869-10.2011
-                    [thi,thf,thr,~,c500,f500] = getTHETAintrinsic(pspt); % we also extract the frequency of theta and the goodness of the theta fit
+                % accumulate data
+                sdata_temp.autocorr_theta = { single(f(:)) }; 
+                % sdata_temp.autocorr_500_info = single([NaN NaN NaN]); % theta index, theta frequency, fit rsquare
+                pdata.autocorr_theta_xvalues = single(xi);
+                pdata.autocorr_theta_evalues = single(edg);
 
-                    % accumulate
-                    sdatap = addToTable(sdatap,'intrinsic_theta_index',thi,'intrinsic_theta_frequency',thf,'intrinsic_theta_fit',thr,'t500_spike_autocorr',{single(c500(:))'},'t500_spike_autofit',{single(f500(:))'});
-                    
-%% ########## %% Refractory period analyses           
-                    % refractory period violation analyses
-                    % from Navratilova et al. (2016) Grids from bands, or bands from grids? An examination of the effects of single unit contamination on grid cell firing fields.
-                    % although they took these analyses from pre-existing papers
-                    % "There are few reliable methods for estimating the contamination of a unit isolated from tetrode recordings (see DISCUSSION). The only method that does not rely 
-                    % on the same measures that are used for spike sorting is to check the number of spikes that occur within the refractory period of another spike..."
-                    % https://doi.org/10.1152/jn.00699.2015
-                    [nrpv,prpv,fp1,fp2,censored,~,c25] = getRPVcount(pspt,isis,part_duration); % we extract the number of spikes in the refractory period, what proportion of the total this is etc                    
+                %% Refractory period analyses           
+                % refractory period violation analyses
+                % from Navratilova et al. (2016) Grids from bands, or bands from grids? An examination of the effects of single unit contamination on grid cell firing fields.
+                % although they took these analyses from pre-existing papers
+                % "There are few reliable methods for estimating the contamination of a unit isolated from tetrode recordings (see DISCUSSION). The only method that does not rely 
+                % on the same measures that are used for spike sorting is to check the number of spikes that occur within the refractory period of another spike..."
+                % https://doi.org/10.1152/jn.00699.2015
+                % [nrpv,prpv,fp1,fp2,censored,t25,c25] = getRPVcount(pspt,isis,part_config.part_duration(pp)); % we extract the number of spikes in the refractory period, what proportion of the total this is etc                    
+                [f,xi,e,edg] = compute_hoisa(pspt,'spt2',pspt,'binsize',1,'window',50,'method','hoisa');
+                nrpv = sum(isis < 2);
+                prpv = nrpv ./ (numel(pspt)-1);
 
-                    % accumulate data
-                    sdatap = addToTable(sdatap,'rpv_total',nrpv,'rpv_proportion',prpv,'rpv_false_positive1',fp1,'rpv_false_positive2',fp2,'rpv_censored',censored,'t25_spike_autocorr',{single(c25(:))'});
-                end
+                % accumulate data
+                sdata_temp.autocorr_refrac = { single(f(:)) }; 
+                sdata_temp.autocorr_refrac_info = single([nrpv prpv]);     
+                pdata.autocorr_refrac_xvalues = single(xi);  
+                pdata.autocorr_refrac_evalues = single(edg);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% Speed modulation analysis   
+%%%%%%%%%%%%%%%% Speed cell analysis
                 % This analysis is taken from Kropff et al (mEC speed cell paper)
                 % It is unlikely to be of great use to HPC people, although many place cells are speed modulated
                 % Related to this, you can also compute the relationship between theta power and running speed
-                
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'speed_score',NaN,'speed_slope',NaN,'speed_y_intercept',NaN,'speed_frate_curve',cell(1,1));
-                
-                if config.sped_asis && numel(pspx)>minspikes
-                    [svals,stime,sscore,sslope,sintcpt,crve,~] = getSPEEDmod(ppot,ppov,pspt);
+                [svals,stime,sscore,sslope,sintcpt,crve,~] = getSPEEDmod(ppot,ppov,pspt);
 
-                    % accumulate data
-                    pdata.(part_now).speed_dwell_time = single(interp1(svals,stime,0:1:50,'linear'));     
-                    sdatap = addToTable(sdatap,'speed_score',sscore,'speed_slope',sslope,'speed_y_intercept',sintcpt,'speed_frate_curve',{single(interp1(svals,crve,0:1:50,'linear'))});
-                end                
-                
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% Cell type/identity  
-                % I use stuff like this to help categorise cells, so I have included it here in case others find it useful
-                % Realistically, for final analyses you will probably want to test SI and grid score etc against a shuffle
-                % rather than a hard cutoff. But for exploration (which klustest is geared towards) it is fine for a guide
-                % It will work best when the cutoffs in getCELLTYPE2 are best suited to your needs
-
-                % preallocate - in order to concatenate tables after each loop they have to have the same columns, unfortunately this means all variables have to be preallocated in case they are not filled during the loop, the syntax here should be straightforward though if you want to add more
-                sdatap = addToTable(sdatap,'cell_type',cell(1,1),'cell_type_int',NaN,'cell_type_bin',cell(1,1));
-                
-                if config.cell_asis && config.wave_asis && config.fild_asis && config.grid_asis && config.head_asis && numel(pspx)>minspikes % we can only do cell typing with all this info available
-                    [btype,ctype,ttype] = getCELLTYPE2(sdatap.frate,sdatap.waveform_params(1,2),sdatap.spatial_info_bsec,sdatap.grid_score,sdatap.hd_rayleigh);                
-
-                    % accumulate data
-                    sdatap = addToTable(sdatap,'cell_type',{ttype},'cell_type_int',ctype,'cell_type_bin',{btype});
-                end
-        
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% Part figure and finish loop
-                % figPART is the main figure, it creates a summary for each cluster in each part, using the info in mtint, pdata and sdatap
-                % I have tried to optimise it as far as possible
-                
-                if numel(pspx)>minspikes
-                    if run_figPART
-                        figPART(mtint,pdata,sdatap,fig_vis); % overall figure with ratemaps etc
-                    end
-                end
-
-                % concatenate sdatap (this part data) into sdatac (this cluster's data)
-                if ~isempty(sdatap)
-                    sdatac = [sdatac;sdatap];
-                end
-
-%% ########## %% Add data to bdata table (behaviour data)
-                if isempty(bdata) || ~any(bdata.partn==pp) % only add behaviour data if this part doesn't exist in bdata yet
-                    % accumulate, these variables don't need to be preallocated as they should always be filled
-                    bdatap.rat = {pdata.rat};
-                    bdatap.date = str2double(pdata.date);
-                    bdatap.partn = pp;
-                    bdatap.part = {part_now};                
-                    bdatap.duration = part_duration;
-                    bdatap.directory = {pwd};
-                    bdatap = addToTable(bdatap,'positions',{single([ppox ppoy])},'speed',{single(ppov)},'HD',{single(ppoh)},'dwellmap',{single(dwellmap)},'HDdwellmap',{single(pdata.(part_now).hd_dwellmap)});
-
-                    % concatenate bdatap (this part data) into bdata (this cluster's data)
-                    bdata = [bdata;bdatap];
-                end
-            end % this ends the parts loop
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% Cluster figures and finish loop            
-            if run_figCLUS
-                if nparts > 1 % if there is more than one part (otherwise this figure is not useful)
-                    figCLUS(mtint,pdata,sdatac,fig_vis); % overall figure with ratemaps etc
+                % accumulate data
+                sdata_temp.speed_slope = { single(interp1(svals,crve,0:1:50,'linear')) };             
+                sdata_temp.speed_info = single([sscore sslope sintcpt]);             
+                pdata.(part_now).speed_dwell_time = single(interp1(svals,stime,0:1:50,'linear'));
+                if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
+                    bdata_temp.speed_dwell_time = { pdata.(part_now).speed_dwell_time };
                 end 
+                
+%%%%%%%%%%%%%%%% Accumulate data
+                sdata = [sdata; sdata_temp];
+                bdata = [bdata; bdata_temp];
+                
+                % Create summary figure for this cluster in this part
+                fname = [pwd '\' pdata.outname '\part_figures\' sdata_temp.uci{1} '_' part_now '.png'];
+                if exist(fname,'file') && skipfigs % if the figure exists and we don't want to overwrite it
+                    continue % don't make the figure
+                elseif isempty(pspt) || ~save_figs % if there were no spikes in this part or we don't want figures at all
+                    continue % don't make the figure  
+                else
+                    % putvar(pdata,sdata_temp,pp,wav_now_clus,quals,fets,fast_figures); return;
+                    klustfig_part(pdata,sdata_temp,pp,wav_now_clus,quals,fets,fast_figures,spatial_shuffles,'off');
+                end
             end
-
-            % concatenate sdatac (this cluster's data) into sdata (data for all clusters)
-            if ~isempty(sdatac)
-                sdata = [sdata;sdatac];
-            end
-            loopout = looper(loopout);
-
-        end % this ends the cluster loop
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% Electrode figures and finish loop  
-
-        %% Cluster cross-correlation figure
-        if run_figCROSS
-            figfile = [pwd '\klustest\' pdata.combined_name '\figures\'];
-            [~,~,~] = mkdir(figfile);                
-            figCROSS(sdata,'tet',tet,'figfile',figfile,'fig_vis','off')
         end
-    % 
-    %     %% Cluster space figure
-    %     if run_figCSPACE
-    %         [~,~,~] = mkdir([pwd '\klustest\' sdata.combined_name '\figures\']);
-    %         figfile = [pwd '\klustest\' sdata.combined_name '\figures\' sdata.combined_name '_E' num2str(tet) '_cluster_space.png'];
-    %         figCSPACE(sdata.(tetstr).fetdata,figfile,fig_vis); % overall figure with ratemaps etc
-    %     end
-    end % this ends the electrode loop
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% ################################################################# %% Save the data and finish up
-    save([pwd '\klustest\' config.cname '\' config.cname '_sdata.mat'],'sdata'); % save session data
-    save([pwd '\klustest\' config.cname '\' config.cname '_pdata.mat'],'pdata'); % save session data
-    save([pwd '\klustest\' config.cname '\' config.cname '_bdata.mat'],'bdata'); % save session data
-
+    end
+    
+%%%%%%%%%%%%%%%% Save the data and finish up
+    sdata = addprop(sdata,{'pdata'},{'table'});
+    sdata = addprop(sdata,{'bdata'},{'table'});    
+    sdata.Properties.CustomProperties.pdata = pdata;
+    sdata.Properties.CustomProperties.bdata = bdata;    
+    save([pwd '\' pdata.outname '\sdata.mat'],'sdata'); % save session data
+    analysis_log({'klustest'},1,'version',{'v19.0.3'});
+    
     % finish up
     toc1 = toc/60;
     disp(sprintf('klustest has finished. It took %0.3f seconds or %0.3f minutes',toc,toc1)) % Stop counting time and display results
     disp(['Go to ','<a href = "matlab: [s,r] = system(''explorer ',pwd,' &'');">','current folder','</a>'])
-    disp(['Go to ','<a href = "matlab: [s,r] = system(''explorer ',[pwd '\klustest\' config.cname '\figures'],' &'');">','figures folder','</a>'])
-    disp('-------------------------------------------------------------------------------------');
-
-end % ends the main klustest function
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% A stupid subfunction for preallocating a table
-function tin = addToTable(tin,varargin)
-    for i=1:2:length(varargin)
-        tin.(varargin{i}) = varargin{i+1}; % table in (variable name) = variable value to assign
-    end
-end % ends addToTable function
-
-
-
-
-
-
+    disp(['Go to ','<a href = "matlab: [s,r] = system(''explorer ',[pwd '\' pdata.outname],' &'');">','klustest folder','</a>'])
+    disp('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
 

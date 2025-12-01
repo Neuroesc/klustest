@@ -46,7 +46,7 @@ switch dataformat
         clus = cell(1,size(tets,1));
        
         for tt = 1:size(tets,1)
-            [clu,~] = getcut([config.cname '\' config.cname '_' num2str(tets(tt)) '.cut']); % this reads the .cut file line by line so that it can be entered into the mtint structure  
+            [clu,~] = getcut([config.cname '_' num2str(tets(tt)) '.cut']); % this reads the .cut file line by line so that it can be entered into the mtint structure  
             clus{tt} = uint8( clu(:) );  
 
             nclus = numel(unique(clus{tt}));

@@ -78,7 +78,7 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
 
         case {'kwiktint'}
             % find which tetrodes are present
-            cnames = dir([config.cname '\*.cut*']); % list all cut files corresponding to the given combined name
+            cnames = dir(['*.cut*']); % list all cut files corresponding to the given combined name
             clist = {cnames.name}.'; % get their names
             cnums = cellfun(@(x) regexp(x,'[_]\d+[.]','match'),clist); % extract just the number part of the name
             tets = cellfun(@(x) str2double(regexp(x,'\d+','match')),cnums); % convert to an integer, these numbers are the existing tetrodes (cut files)
@@ -89,7 +89,7 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             tets(:,2) = zeros(size(tets(:,1)));
 
             % open the first existing tetrode and extract the session info
-            cutname = [config.cname '\' config.cname '_' num2str(tets(1)) '.cut']; % the cut file name
+            cutname = [config.cname '_' num2str(tets(1)) '.cut']; % the cut file name
             [~,etext] = getcut(cutname); % get data from cutfile, specifically the line which identifies the parent sessions
             idx = strfind(etext,': '); % should contain two values
             flist = textscan(etext(idx(1)+2:idx(2)-8),'%s','delimiter',','); % get the file name parts of the string

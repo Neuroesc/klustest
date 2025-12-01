@@ -1,27 +1,62 @@
-function klustest_v3(varargin)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%klustest  cluster analysis function
-% This function utilises many minor functions to both analyse and plot cluster data generated 
-% in Tint. If requested, it will output a figure for each cluster, the cluster space of each
-% tetrode, the cross-correlations of every cluster on a tetrode and a session data structure (sdata.mat)
-% It will also generate an mtint file (mtint.mat) containing all the tetrode and cluster info.
-% klustest(tetrodes,clusters,cname)
+function klustest(varargin)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ################################################################# %% DESCRIPTION
+%klustest  function for analysing clusters after cluster cutting
+%    This function utilises many minor functions to both analyse and plot cluster data generated in Tint. If requested, 
+%    it will output a figure for each cluster, the cluster space of each tetrode, the cross-correlations of every cluster 
+%    on a tetrode and a session data structure (sdata.mat) It will also generate an mtint file (mtint.mat) containing all 
+%    the tetrode and cluster info.
 %
 % USAGE:
-%         klustest(tetrodes,clusters,cname)
+%           klustest() process files with default settings
+%                 klustest will look for .cut files named [cname] (default is kwiktint), it will open the first one and extract 
+%                 details about which sessions were used to make that .cut file. It will then open all of the required files to
+%                 build an mtint table which contains a summary of all the spikes etc for a session. It will then process every
+%                 cluster on every possible tetrode and generate an output figure for each.
 %
-% INPUT:
-%         tetrodes - (default = 1:16) the tetrodes to run on in a vector format (i.e. [1 2 3 4 5 6] would run on tetrodes 1 to 6)
-%         clusters - (default = 0) the clusters to run on, set this to 0 to run on all clusters
-%         rname - the rat name/number as a string - this will be used in the sdata structure so its important to give this
-%         cname - (optional) function will automatically look for klustakwiked files named 'kwiktint', but you can change this here (i.e if you chose a custom output name in kwiktint)
+%           klustest(Name,Value,...) process with Name-Value pairs used to control aspects of the function output
+%
+%           Parameters include:
+%
+%           'tetrodes'              -   (default = 1:16) Vector, the tetrodes to run on (i.e. [1 2 3 4 5 6] would run on tetrodes 1 to 6)
+%
+%           'clusters'              -   (default = 0) Vector, the clusters to run on, set this to 0 to run on all clusters
+%
+%           'rname'                 -   (default = first 3 characters of parent directory) String, the rat name/number; this will be used in the sdata structure so its important to give this
+%
+%           'cname'                 -   (default = 'kwiktint') String, function will automatically look for klustakwiked files named this
+%
+%           'part_names'            -   Cell array of strings, the names you want the outputs to be saved as - see function text for more info
+%                                       default values are whatever values are specified in klustest
+%
+%           'part_methods'          -   Numeric vector, see function text for more info
+%                                       default values are whatever values are specified in klustest
+%
+%           'part_intervals'        -   Cell array of numeric vectors, see function text for more info
+%                                       default values are whatever values are specified in klustest
+%
+%           'pixel_ratio_override'  -   (default = []) Numeric vector, set to empty [] to ignore, otherwise this must be n recording sessions long
+%
+%           'interval_keys'         -   (default = {'s','e'}) Cell array, what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters - see function text for more info
 %
 % EXAMPLES:
 %
-% See also: KWIKTINT
+%           % run function using default values
+%           klustest()
+%
+%           % run function using default values, but only on tetrodes 1 and 5
+%           klustest('tetrodes',[1 5])
+%
+%           % run function using default values, all specified
+%           klustest('tetrodes',1:16,'clusters',0,'rname','RAT','cname','kwiktint')
+%
+% See also: kwiktint getTRODESkk
 
 % HISTORY:
-% version 01.0.0, Release 05/08/16 created from an older version
+% version 01.0.0, Release 23/02/16 YTcluanalysisROD majorly revised
+% version 01.0.1, Release 24/02/16 added functionality to find session details from .set file
+% version 01.0.2, Release 30/03/16 fixed some problems with .set file data because I updated it to handle multiple sessions
+% version 01.0.3, Release 05/08/16 renamed, fixed some errors
 % version 01.1.0, Release 08/08/16 modified readDACQDATA to output waveforms and added post processing of this info
 % version 01.2.0, Release 08/08/16 readDACQDATA working, added postprocessing of mtint
 % version 01.3.0, Release 09/08/16 main plots working
@@ -82,30 +117,47 @@ function klustest_v3(varargin)
 % version 16.3.3, Release 16/05/19 progress shown using custom code 'looper'
 % version 16.4.0, Release 20/06/19 fixed error when part_config is first created because Matlab's use of cell arrays in tables changed with 2019b
 % version 17.0.0, Release 15/04/19 added exception for weird characters in saveKEY, fixed error in figKEYS where timestamps were not concatenated correctly
+% version 17.1.0, Release 15/04/19 overhaul of digital input processing, added manageKEYS which can be used via prepKEYS without klustest
+% version 17.2.0, Release 17/04/19 added name value pair arguments
 
 %
 % Author: Roddy Grieves
 % UCL, 26 Bedford Way
 % eMail: r.grieves@ucl.ac.uk
-% Copyright 2018 Roddy Grieves
+% Copyright 2016 Roddy Grieves
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ################################################################# %% INPUT ARGUMENTS CHECK
 %% Prepare default settings
-    def_tetrodes            = 1:16;        
-    def_clusters            = 0;     
-    def_cname               = 'kwiktint';   
+    def_tetrodes                = 1:16;        
+    def_clusters                = 0;     
+    def_cname                   = 'kwiktint';   
     % I can extract the rat name from the file path because I know my folder structure, if this is not the case for you, change def_rname to what you prefer
     % the next two lines make rname equal the first 3 characters of the directory containing the current directory
     pname = pwd; sindx=strfind(pname,'\'); 
-    def_rname = pname(sindx(end-1)+1:sindx(end-1)+3);    
+    def_rname                   = pname(sindx(end-1)+1:sindx(end-1)+3);    
     
+    % Specify partition configuration settings
+    % If these are passed as name,value pair arguments those values will be taken instead
+    def_part_names              = {'S1'}; % the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
+    % method of partition, corresponding to each of the names above: 1 = combine everything, 2 = take a recording session, 3 = use digital inputs
+    def_part_methods            = [2]; % i.e. if part_methods=[2 2 2 1], we will have 4 parts, the first 3 correspond to some combination of recording sessions (there can be multiple ones) and the last one will include all data
+    % cell array of vectors indicating which intervals to include in each partition: if method = 1 this does nothing, if method = 2 this should specify which recording sessions to include, if method = 3 this should specify which digital input pairs to include (inf = use all)
+    def_part_intervals          = {1}; % i.e. if part_methods=[2 2 2], then if part_intervals={1 2 3}, rec 1 will go in part 1, rec 2 in part 2 and rec 3 in part 3    OR     if part_methods=[2 2 2 2 2], then if part_intervals={1 [2 4 5] 3}, rec 1 will go in part 1, rec 2,4 and 5 in part 2 and rec 3 in part 3
+    def_pixel_ratio_override    = []; % set to empty [] to ignore, otherwise this must be n recording sessions long
+    def_interval_keys           = {{'s','e'}}; % what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
+            
 %% Parse inputs
     p = inputParser;
-    addOptional(p,'tetrodes',def_tetrodes,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
-    addOptional(p,'clusters',def_clusters,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
-    addOptional(p,'cname',def_cname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
-    addOptional(p,'rname',def_rname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
+    addParameter(p,'tetrodes',def_tetrodes,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
+    addParameter(p,'clusters',def_clusters,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
+    addParameter(p,'cname',def_cname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
+    addParameter(p,'rname',def_rname,@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
+    addParameter(p,'part_names',def_part_names,@(x) ~isempty(x) && iscell(x)); 
+    addParameter(p,'part_methods',def_part_methods,@(x) ~isempty(x) && isnumeric(x)); 
+    addParameter(p,'part_intervals',def_part_intervals,@(x) ~isempty(x) && iscell(x)); 
+    addParameter(p,'pixel_ratio_override',def_pixel_ratio_override,@(x) ~isempty(x) && isnumeric(x)); 
+    addParameter(p,'interval_keys',def_interval_keys,@(x) ~isempty(x) && iscell(x) && numel(x)==2); 
     parse(p,varargin{:});
 
 %% Retrieve parameters 
@@ -113,21 +165,12 @@ function klustest_v3(varargin)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ################################################################# %% INITIAL SETTINGS / INPUTS
-    % Specify partition configuration settings
-    part_names              = {'square1','lattice','square2'}; % the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
-    % method of partition, corresponding to each of the names above: 1 = combine everything, 2 = take a recording session, 3 = use digital inputs
-    part_methods            = [2 2 2]; % i.e. if part_methods=[2 2 2 1], we will have 4 parts, the first 3 correspond to some combination of recording sessions (there can be multiple ones) and the last one will include all data
-    % cell array of vectors indicating which intervals to include in each partition: if method = 1 this does nothing, if method = 2 this should specify which recording sessions to include, if method = 3 this should specify which digital input pairs to include (inf = use all)
-    part_intervals          = {1 2 3}; % i.e. if part_methods=[2 2 2], then if part_intervals={1 2 3}, rec 1 will go in part 1, rec 2 in part 2 and rec 3 in part 3    OR     if part_methods=[2 2 2 2 2], then if part_intervals={1 [2 4 5] 3}, rec 1 will go in part 1, rec 2,4 and 5 in part 2 and rec 3 in part 3
-    pixel_ratio_override    = []; % set to empty [] to ignore, otherwise this must be n recording sessions long
-    interval_keys           = {}; % what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
-        
     % overrides - general settings for overriding normal klustest functionality
-    pconfig_override        = 0; % set to 1 if you want to ignore and overwrite an existing part_config, set to 2 to run with current part_config settings without overwriting anything
-    maintain_mtint          = 0; % DEBUGGING ONLY set to 1 to save/load mtint in the base workspace, this saves time when running the function mutliple times (for instance in debugging) but should otherwise be set to 0
-    mtint_override          = 0; % set this to 1 to force the production of a new mtint file (do this if you reclustered in tint for instance)
-    trial_override          = 0; % set this to 1 to force the production of a new .key file (do this if you are not happy with the current trials for instance)
-    fig_key_off             = 1; % set this to 1 to suppress display of trials/digital keypresses in an interactive UI
+    config.pconfig_override = 0; % set to 1 if you want to ignore and overwrite an existing part_config, set to 2 to run with current part_config settings without overwriting anything
+    config.maintain_mtint   = 0; % DEBUGGING ONLY set to 1 to save/load mtint in the base workspace, this saves time when running the function mutliple times (for instance in debugging) but should otherwise be set to 0
+    config.mtint_override   = 0; % set this to 1 to force the production of a new mtint file (do this if you reclustered in tint for instance)
+    config.trial_override   = 0; % set this to 1 to force the production of a new .key file (do this if you are not happy with the current trials for instance)
+    config.fig_key_off      = 1; % set this to 1 to suppress display of trials/digital keypresses in an interactive UI
     
     % map settings - settings used when generating 2D spatial firing rate maps
     config.rmethod          = 'gaussian'; % (default 'nearest') the mapping approach to use, either 'nearest','gaussian','adaptive','KDE'
@@ -159,6 +202,7 @@ function klustest_v3(varargin)
     % figure settings
     run_figPART            = 1; % [ figPART ] set to 1 for figures showing the activity of a cluster in each part
     run_figCLUS            = 0; % [ figCLUS ] set to 1 for figures showing the activity of a cluster in all parts together
+    run_figCROSS           = 0; % [ figCROSS ] set to 1 for figures showing spike cross-correlation of all cells on a given tetrode   
     fig_vis                = 'off'; % set to 'on' to see figures as they are generated and saved, set to 'off' to suppress this (faster)
     
     % optimization settings
@@ -185,9 +229,9 @@ function klustest_v3(varargin)
     disp('----------------------------------------------------------------------------');
     time_now = datestr(now,'yyyy-mm-dd-HH-MM-SS');
     disp(sprintf('Running %s at %s...',function_name,time_now))
-    if pconfig_override; disp(sprintf('\tWARNING: will override part_config...'));                 end
-    if maintain_mtint;   disp(sprintf('\tWARNING: will use/maintain mtint in base workspace...')); end
-    if mtint_override;   disp(sprintf('\tWARNING: will override mtint...'));                       end
+    if config.pconfig_override; disp(sprintf('\tWARNING: will override part_config...'));                 end
+    if config.maintain_mtint;   disp(sprintf('\tWARNING: will use/maintain mtint in base workspace...')); end
+    if config.mtint_override;   disp(sprintf('\tWARNING: will override mtint...'));                       end
     disp(sprintf('\t...%s spatial maps with %.1fcm bins (%.1f padding)',config.rmethod,config.bin_size,config.map_padd));
     disp(sprintf('\t...%.1f%% cutoff for fields, %.1f pixels minimum, %.1fHz minimum',config.frcut.*100,config.arcut,config.minfr));
     disp(sprintf('\t...%s HD maps with %d bins',config.hd_type,config.hd_bins));
@@ -198,8 +242,8 @@ function klustest_v3(varargin)
     % lump everything together if we care about some intrinsic property of the cells
     % We want to save this table so that in the future we can just run the function with the same settings
     [~,~,~] = mkdir([pwd '\klustest\' config.cname]); % create the folder which will hold a lot of klustest data
-    part_num = length(part_names);
-    part_config = table(repmat({config.rname},part_num,1),part_names',part_methods',part_intervals',repmat({config.cname},part_num,1));
+    part_num = length(config.part_names);
+    part_config = table(repmat({config.rname},part_num,1),config.part_names',config.part_methods',config.part_intervals',repmat({config.cname},part_num,1));
     part_config.Properties.VariableNames = {'Rat','Part','Method','Intervals','Outname'};
     
     % load or save part_config
@@ -212,7 +256,7 @@ function klustest_v3(varargin)
     % a structure named 'part_data', the field named 'part_config' is the last part_config setting used, the other fields are
     % older part_configs, where the numbers in the field name reflect the date/time they were overwritten
     pconfig_name = ['klustest\' config.cname '\' config.cname '_part_config.mat'];    
-    part_config = partIO(pconfig_name,part_config,pconfig_override);
+    part_config = partIO(pconfig_name,part_config,config.pconfig_override);
     disp(sprintf('\t...rat name: %s',config.rname))      
 
     % start to prepare the pdata (part or session data) and sdata (cell data) tables
@@ -221,12 +265,12 @@ function klustest_v3(varargin)
     % the sdata table contains data for each cluster/part (one per row). The idea being that tables are easier to concatenate
     % to build a full data set
     pdata = struct; % will hold part data
-    pdata.part_names = part_names;
-    pdata.combined_name = config.cname;
-    pdata.rat = config.rname;
+    pdata.part_names = part_config.Part';
+    pdata.combined_name = part_config.Outname{1,1};
+    pdata.rat = part_config.Rat{1,1};
     pdata.analysed = time_now;
     pdata.directory = pwd;
-    pdata.interval_keys = interval_keys;
+    pdata.interval_keys = config.interval_keys;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
 %% ################################################################# %% Get session names and tetrodes
@@ -273,21 +317,21 @@ function klustest_v3(varargin)
     disp(sprintf('Fetching DACQ data (mtint)...'));
     mname = ['klustest\' config.cname '\' config.cname '_mtint.mat']; % the filename of the mtint (one that exists or one we will make)
     
-    if any(strcmp(evalin('base','who'),'mtint')) && ~mtint_override && maintain_mtint % if we want to use an mtint currently held in memory
+    if any(strcmp(evalin('base','who'),'mtint')) && ~config.mtint_override && config.maintain_mtint % if we want to use an mtint currently held in memory
         mtint = evalin('base','mtint');        
         m = whos('mtint');     
         disp(sprintf('\t...using mtint held in memory (%.1fMb)',m.bytes./1e+6));
-    elseif ~exist(mname,'file') || mtint_override
+    elseif ~exist(mname,'file') || config.mtint_override
         disp(sprintf('\t...building mtint'));    
-        mtint = getDACQDATA(config.cname,snames,tetrodes); % my replacement for readalldacqdata
+        mtint = getDACQDATA(config,snames,tetrodes); % my replacement for readalldacqdata
         disp(sprintf('\t...post-processing mtint'));
 
         % deal with manual override of pixel ratio if necessary
-        if numel(pixel_ratio_override) ~= numel(mtint.pos.header)
-            disp(sprintf('\tWARNING: number of pixel ratios in part_config (%d) does not equal number of recordings (%d)... ignoring manual values',numel(pixel_ratio_override),length({mtint.pos.header.pixels_per_metre})));
+        if numel(config.pixel_ratio_override) ~= numel(mtint.pos.header)
+            disp(sprintf('\tWARNING: number of pixel ratios in part_config (%d) does not equal number of recordings (%d)... ignoring manual values',numel(config.pixel_ratio_override),length({mtint.pos.header.pixels_per_metre})));
         else
             for pr = 1:numel([mtint.pos.header.pixels_per_metre])
-                mtint.pos.header(pr).pixels_per_metre = pixel_ratio_override(pr);
+                mtint.pos.header(pr).pixels_per_metre = config.pixel_ratio_override(pr);
             end
         end    
 
@@ -313,7 +357,7 @@ function klustest_v3(varargin)
     disp(sprintf('\t...total session time: %ds',duration))
     disp(sprintf('\t...cut file is made up of %d recordings',numel(mtint.header)))
 
-    if maintain_mtint
+    if config.maintain_mtint
         assignin('base','mtint',mtint); % leave mtint in base workspace
     end 
     disp(sprintf('\t...done'));
@@ -326,7 +370,7 @@ function klustest_v3(varargin)
     pdata.session_details.session_names = pdata.session_names; % cell array of session names
     pdata.session_details.session_lengths = mtint.pos.trial_duration(:); % length of each recording (s)
     pdata.session_details.session_ends = cumsum(mtint.pos.trial_duration(:)); % the time (in concatenated klustest time) where this session ends in the data (s)
-    pdata.session_details.session_starts = pdata.session_details.session_ends(:) - pdata.session_details.session_lengths(:); % the time (in concatenated klustest time) where this session starts in the data (s)
+    pdata.session_details.session_starts = pdata.session_details.session_ends - pdata.session_details.session_lengths; % the time (in concatenated klustest time) where this session starts in the data (s)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
 %% ################################################################# %% Add interval/part time delineations to part_config (now stored in pdata)
@@ -337,14 +381,14 @@ function klustest_v3(varargin)
     % If you are using keypresses (i.e. intervals) partSESS2 will also run figKEYS which will plot every
     % trial and let you correct keypresses if necessary
     disp(sprintf('Preparing partitions...'))
-    pdata.config.trial_override = trial_override;
-    pdata.config.fig_key_off = fig_key_off;    
+    pdata.config.trial_override = config.trial_override;
+    pdata.config.fig_key_off = config.fig_key_off;    
     [pdata,nparts] = partSESS2(mtint,pdata); % process the part_config to get the start and end time of each partition
 
     % basic session info
     disp(sprintf('\t...%d parts',nparts))
-    disp(sprintf('\t...part methods: %s',mat2str(pdata.part_config.Method(:))))
-    disp(sprintf('\t...part names: %s',strjoin(pdata.part_config.Part(:),', ')))
+    disp(sprintf('\t...part methods: %s',mat2str(pdata.part_config.Method)))
+    disp(sprintf('\t...part names: %s',strjoin(pdata.part_config.Part,', ')))
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%                
 %% ################################################################# %% Prepare important data
@@ -409,6 +453,7 @@ function klustest_v3(varargin)
     % This is especially true now that cluster quality has been moved to gatDACQDATA, so that it doesn't have to be
     % computed on every run of klustest. However, we will load the waveforms for this tetrode before continuing to the clusters
     sdata = table; % will hold all the cluster data
+    bdata = table; % will hold all the behaviour data (most of it duplicated from pdata though)
     for ee = 1:length(tetrodes) 
         tet = tetrodes(ee); % tet = the current tetrode
         disp(sprintf('\tLoading tetrode %d...',tet));
@@ -438,7 +483,7 @@ function klustest_v3(varargin)
             rnow = 1;            
             for ssn = 1:length(pdata.session_names)
                 fnamen = pdata.session_names{ssn};
-                [~,c1,c2,c3,c4,~] = getSPIKESV([fnamen,'.',num2str(tet)]);               
+                [~,c1,c2,c3,c4,~] = get_SPIKESV([fnamen,'.',num2str(tet)]);               
                 waves(rnow:rnow+length(c1(:,1))-1,:,1) = c1;
                 waves(rnow:rnow+length(c2(:,1))-1,:,2) = c2;
                 waves(rnow:rnow+length(c3(:,1))-1,:,3) = c3;
@@ -484,7 +529,8 @@ function klustest_v3(varargin)
             % an enormous recording session with many intervals
             part_names = pdata.part_config.Part;
             for pp = 1:nparts % for every partition         
-                sdatap = table; % to hold part data for this cluster   
+                sdatap = table; % to hold cluster data for this part  
+                bdatap = table; % to hold behaviour data for this part
                 part_now = part_names{pp}; % the name of the current part
                 if ~isfield(pdata,part_now)
                     continue
@@ -532,6 +578,7 @@ function klustest_v3(varargin)
                 % accumulate, these variables don't need to be preallocated as they should always be filled
                 sdatap.rat = {pdata.rat};
                 sdatap.date = str2double(pdata.date);
+                sdatap.directory = {pwd};
                 sdatap.partn = pp;
                 sdatap.part = {part_now};                
                 sdatap.uci = {uci};
@@ -591,7 +638,7 @@ function klustest_v3(varargin)
                     end
 
                     % get the cell's width of waveform using the waveform with the highest mean amplitude
-                    [amp,idx] = max(sdatap.waveform_max(1,:));
+                    [amp,idx] = max(sdatap.waveform_max);
                     wow = sdatap.waveform_width(1,idx);
                     sdatap.waveform_params(1,:) = [amp wow]; % accumulate data
                     clear waves2 sindax pindax % clear all the waveform data, we don't need it again and it is quite large
@@ -731,11 +778,12 @@ function klustest_v3(varargin)
                     % "To obtain a theta phase angle for each spike, LFPs were first bandpass filtered (fourth-order Chebyshev, r = 0.5, MATLAB 
                     % filter and filtfilt routines; 6–10 Hz) before a Hilbert transform was applied to obtain the instantaneous phase angle."
                     % from van der Meer and Redish (2011) Theta Phase Precession in Rat Ventral Striatum Links Place and Reward Information (https://doi.org/10.1523/JNEUROSCI.4869-10.2011)             
-                    [phase_out,~,~] = Phase([lfpt(:) lftheta(:)],pspt);
-                    pspp = phase_out(:,2);  
+                    h = hilbert(lftheta);
+                    phase = mod(angle(h),2*pi);  
+                    pspp = interp1(lfpt(:),phase,'nearest');
                     spp2 = reshape([pspp; (pspp+2*pi)],[],1);
                     yi = histcounts(spp2,ai);
-
+                    
                     % directional analyses on phase data
                     mx2p = ai(yi == max(yi)); % preferred angle (location of max frate)
 
@@ -860,6 +908,20 @@ function klustest_v3(varargin)
                     sdatac = [sdatac;sdatap];
                 end
 
+%% ########## %% Add data to bdata table (behaviour data)
+                if isempty(bdata) || ~any(bdata.partn==pp) % only add behaviour data if this part doesn't exist in bdata yet
+                    % accumulate, these variables don't need to be preallocated as they should always be filled
+                    bdatap.rat = {pdata.rat};
+                    bdatap.date = str2double(pdata.date);
+                    bdatap.partn = pp;
+                    bdatap.part = {part_now};                
+                    bdatap.duration = part_duration;
+                    bdatap.directory = {pwd};
+                    bdatap = addToTable(bdatap,'positions',{single([ppox ppoy])},'speed',{single(ppov)},'HD',{single(ppoh)},'dwellmap',{single(dwellmap)},'HDdwellmap',{single(pdata.(part_now).hd_dwellmap)});
+
+                    % concatenate bdatap (this part data) into bdata (this cluster's data)
+                    bdata = [bdata;bdatap];
+                end
             end % this ends the parts loop
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -881,14 +943,12 @@ function klustest_v3(varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ################################################################# %% Electrode figures and finish loop  
 
-    %     %% Cluster cross-correlation figure
-    %     if run_figCROSS
-    %         if sum(clus ~= 0) > 1
-    %             [~,~,~] = mkdir([pwd '\klustest\' sdata.combined_name '\figures\']);
-    %             figfile = [pwd '\klustest\' sdata.combined_name '\figures\' sdata.combined_name '_E' num2str(tet) '_cross_correlogram.png'];            
-    %             figCROSS(sdata,tet,figfile,fig_vis); % overall figure with ratemaps etc
-    %         end
-    %     end
+        %% Cluster cross-correlation figure
+        if run_figCROSS
+            figfile = [pwd '\klustest\' pdata.combined_name '\figures\'];
+            [~,~,~] = mkdir(figfile);                
+            figCROSS(sdata,'tet',tet,'figfile',figfile,'fig_vis','off')
+        end
     % 
     %     %% Cluster space figure
     %     if run_figCSPACE
@@ -902,6 +962,7 @@ function klustest_v3(varargin)
 %% ################################################################# %% Save the data and finish up
     save([pwd '\klustest\' config.cname '\' config.cname '_sdata.mat'],'sdata'); % save session data
     save([pwd '\klustest\' config.cname '\' config.cname '_pdata.mat'],'pdata'); % save session data
+    save([pwd '\klustest\' config.cname '\' config.cname '_bdata.mat'],'bdata'); % save session data
 
     % finish up
     toc1 = toc/60;
@@ -919,35 +980,6 @@ function tin = addToTable(tin,varargin)
         tin.(varargin{i}) = varargin{i+1}; % table in (variable name) = variable value to assign
     end
 end % ends addToTable function
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

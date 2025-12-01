@@ -61,9 +61,9 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                 switch dataformat
                     case {'kwiktint'}
                         [~,b,~] = fileparts(data_dirs{ff});
-                        h = get_dacq_headers([b '\' b '.pos']);
+                        h = get_dacq_headers([b '.pos']);
   
-                        [led_pos,potn,~] = read_rawpos([b '\' b '.pos'],2);
+                        [led_pos,potn,~] = read_rawpos([b '.pos'],2);
                         potn = potn + total_duration;
                         total_duration = total_duration + h.duration;
 

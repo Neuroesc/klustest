@@ -57,7 +57,7 @@ switch dataformat
 
         for ff = 1:length(data_dirs) % for every data directory  
             [~,b,~] = fileparts(data_dirs{ff});          
-            fname_eeg = [b '\' b '.eeg']; % the file name 
+            fname_eeg = [b '.eeg']; % the file name 
             % fname_egf = [b '\' b '.egf']; % the file name 
 
             if ds
