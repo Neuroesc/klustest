@@ -1,40 +1,49 @@
 function [hdata,fname] = get_set_for_klustest(dataformat,config)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%getTRODES  find the names of the sessions contributing to this cutfile and the active tetrodes
-% Given the combined name of a session this function checks which tetrode has a cut file, opens it and extracts the name of the 
-% files (sessions) that contributed towards it. In this process we also get a list of which tetrodes have a .cut file (i.e. were
-% cluster cut).
+% get_set_for_klustest load session info from .set files or equivalent
+% Data loading function for klustest, given a data format type, and some
+% settings, finds .set files (Tint format) or .ntt files (Neuralynx format) and
+% extracts some headers/information that are useful for analysis,
 %
-% USAGE:
-%         [tets,mtets,snames,cutname] = getTRODES(cname,tin)
+% USAGE
 %
-% INPUT:
-%         cname - combined name of the session, without an extension, default is 'kwiktint' because thats the default output for kwiktint
-%         tin - (optional) tetrodes to check for, default is 1:16
+% [hdata,fname] = get_set_for_klustest(dataformat,config)
 %
-% OUTPUT:
-%    tets - list of tetrodes with cut files
-%    snames - cell array of session names
-%    cutname - the name of the cutfile that was used
+% INPUT
 %
-% EXAMPLES:
+% 'dataformat' - String: 'kwikcut','neuralynx','kwiktint','phy' (experimental)
 %
-% See also: klustest getcut setdiff
+% 'config' - Structure, configuration file from klustest, contains the
+%           input/output filename to check for tetrodes etc
+%
+% OUTPUT
+%
+% 'hdata' - Table, session data, headers
+%
+% 'fname' - Filename of the file used to build hdata
+%
+% NOTES
+% 1. Phy data format is experimental
+%
+% 2. Function is not really intended to be used without klustest
+% 
+% SEE ALSO kwiktint klustest Nlx2MatSpike
 
-% HISTORY:
-% version 1.0.0, Release 24/08/16 Initial release
+% HISTORY
+%
+% version 1.0.0, Release 24/08/16 Initial release modified from getSET
 % version 1.0.1, Release 04/04/18 Commenting and formatting for klustest update
-% version 2.0.0, Release 04/04/18 Changed to also search for active tetrodes (combined getTRODES and getCNAMES)
-% version 2.0.1, Release 04/04/18 Removed list of inactive tetrodes, this can be generated using setdiff, reduces vargin to just 1
-% version 2.0.2, Release 19/04/19 Updated to remove possible duplicates of tetrodes
+% version 1.0.2, Release 29/11/25 Updates for GitHub release
+% version 1.0.3, Release 16/12/25 updated filenames for cross platform flexibility
+% version 1.0.4, Release 16/12/25 improved comments, not ideal but detailed enough for now
 %
-% Author: Roddy Grieves
-% UCL, 26 Bedford Way
-% eMail: r.grieves@ucl.ac.uk
-% Copyright 2018 Roddy Grieves
+% AUTHOR 
+% Roddy Grieves
+% University of Glasgow, Sir James Black Building
+% Neuroethology and Spatial Cognition Lab
+% eMail: roddy.grieves@glasgow.ac.uk
+% Copyright 2025 Roddy Grieves
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% FUNCTION BODY
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
     hdata = table;
     hdata.date = datetime("now",'format','yyyyMMddHHmmss'); % default is now
 
@@ -48,21 +57,21 @@ function [hdata,fname] = get_set_for_klustest(dataformat,config)
             hdata.date = h.trial_date;
 
         case {'kwikcut','neuralynx'}
-            d = dir([config.snames{1} '\*.ntt']);
+            d = dir( fullfile(config.snames{1},'*.ntt') );
             fnames_ntt = {d.name};
             n_ntt = length(fnames_ntt);
-            d = dir([config.snames{1} '\*.nst']);
+            d = dir( fullfile(config.snames{1},'*.nst') );
             fnames_nst = {d.name};  
             n_nst = length(fnames_nst);        
             fnames = [fnames_ntt; fnames_nst];
 
-            fname = [config.snames{1} '\' fnames{1}];
+            fname = fullfile(config.snames{1},fnames{1});
             h = Nlx2MatSpike(fname,[0 0 0 0 0],1,1,1); 
         
             idx = contains(h,{'TimeCreated'}); % find the time created entry
             if any(idx)
                 txt = h{idx}(13:24); % extract the number part of the text
-                sindx = regexp(txt,'/');
+                sindx = regexp(txt,filesep);
                 txt(sindx) = [];
                 hdata.date = txt;     
             end

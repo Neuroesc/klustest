@@ -169,6 +169,7 @@ function klustest(varargin)
 % version 20.0.2, Release 16/12/25 updated get_iso_for_klustest to use logarithmic scale for histograms
 % version 20.0.3, Release 16/12/25 removed inset CDFs in isolation graph in klustfig_part
 % version 20.0.3, Release 16/12/25 updated filenames for cross platform flexibility
+
 %
 % AUTHOR 
 % Roddy Grieves
@@ -178,7 +179,6 @@ function klustest(varargin)
 % Copyright 2025 Roddy Grieves
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INPUTS
-%%%%%%%%%%%%%%%% ARGUMENT CHECK
     p = inputParser;
     addParameter(p,'tetrodes',1:16,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
     addParameter(p,'clusters',0,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
@@ -201,6 +201,7 @@ function klustest(varargin)
     config.fast_figures = 1; % 1 = 4-5x faster figure saving, but at a slightly lower quality
     config.fig_res = 250; % resolution at which to save figures
     config.n_waveforms = 250; % number of waveforms to show
+    config.max_plot_fets = 1e5; % set to 0 to show all feature points in feature space
     config.max_plot_spikes = 1e5; % set to 0 to show all spikes in spike & position plot
     config.show_figs = 'off'; % display figures before saving
     

@@ -1,40 +1,56 @@
 function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%getTRODES  find the names of the sessions contributing to this cutfile and the active tetrodes
-% Given the combined name of a session this function checks which tetrode has a cut file, opens it and extracts the name of the 
-% files (sessions) that contributed towards it. In this process we also get a list of which tetrodes have a .cut file (i.e. were
-% cluster cut).
+% get_tets_for_klustest find the names of the sessions contributing to this cutfile and the active tetrodes
+% Data loading function for klustest, given a data format type, and some
+% settings, finds .cut files (Tint format) or .ntt files (Neuralynx format) and
+% builds a list of sessions contributing to this file (if sessions were merged)
+% and a list of tetrodes available for analysis.
 %
-% USAGE:
-%         [tets,mtets,snames,cutname] = getTRODES(cname,tin)
+% USAGE
 %
-% INPUT:
-%         cname - combined name of the session, without an extension, default is 'kwiktint' because thats the default output for kwiktint
-%         tin - (optional) tetrodes to check for, default is 1:16
+% [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
 %
-% OUTPUT:
-%    tets - list of tetrodes with cut files
-%    snames - cell array of session names
-%    cutname - the name of the cutfile that was used
+% INPUT
 %
-% EXAMPLES:
+% 'dataformat' - String: 'kwikcut','neuralynx','kwiktint','phy' (experimental)
 %
-% See also: klustest getcut setdiff
+% 'config' - Structure, configuration file from klustest, contains the
+%           input/output filename to check for tetrodes etc
+%
+% OUTPUT
+%
+% 'tets' - Nx2, tetrodes or stereotrode numbers listed in column 1, column 2
+%           identifies the electrode type (0 = tetrode, 1 = stereotrode)
+%
+% 'snames' - Cell array of strings, session names contributing to cut
+%
+% 'data_dirs' - Cell array of strings, directories where the data can be found
+%
+% NOTES
+% 1. Phy data format is experimental
+%
+% 2. Function is not really intended to be used without klustest
+% 
+% SEE ALSO kwiktint klustest getcut
 
-% HISTORY:
-% version 1.0.0, Release 24/08/16 Initial release
+% HISTORY
+%
+% version 1.0.0, Release 24/08/16 Initial release, modofied from getTRODES
 % version 1.0.1, Release 04/04/18 Commenting and formatting for klustest update
 % version 2.0.0, Release 04/04/18 Changed to also search for active tetrodes (combined getTRODES and getCNAMES)
 % version 2.0.1, Release 04/04/18 Removed list of inactive tetrodes, this can be generated using setdiff, reduces vargin to just 1
 % version 2.0.2, Release 19/04/19 Updated to remove possible duplicates of tetrodes
+% version 2.0.3, Release 29/11/25 Updates for GitHub release
+% version 2.0.4, Release 16/12/25 updated filenames for cross platform flexibility
+% version 2.0.5, Release 16/12/25 improved comments, not ideal but detailed enough for now
 %
-% Author: Roddy Grieves
-% UCL, 26 Bedford Way
-% eMail: r.grieves@ucl.ac.uk
-% Copyright 2018 Roddy Grieves
+% AUTHOR 
+% Roddy Grieves
+% University of Glasgow, Sir James Black Building
+% Neuroethology and Spatial Cognition Lab
+% eMail: roddy.grieves@glasgow.ac.uk
+% Copyright 2025 Roddy Grieves
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% FUNCTION BODY
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
     switch dataformat
         case {'kwikcut','neuralynx'}
             % find possible directories
@@ -46,11 +62,11 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             data_dirs = [];
             snames = [];
             for dd = 1:length(possible_dnames)
-                f1 = dir([pwd '\' possible_dnames{dd} '\*.ntt']); % neuralynx tetrode file
-                f2 = dir([pwd '\' possible_dnames{dd} '\*.nst']); % neuralynx stereotrode file
+                f1 = dir( fullfile(pwd,possible_dnames{dd},'*.ntt') ); % neuralynx tetrode file
+                f2 = dir( fullfile(pwd,possible_dnames{dd},'*.nst') ); % neuralynx stereotrode file
             
                 if ~isempty(f1) || ~isempty(f2)
-                    data_dirs = [data_dirs; {[pwd '\' possible_dnames{dd}]}];
+                    data_dirs = [data_dirs; {fullfile(pwd,possible_dnames{dd})}];
                     snames =  [snames; possible_dnames(dd)];
                 end
             end
@@ -58,7 +74,7 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             % find tetrodes in each sub directory
             p_tet = 1:1024;
             for ff = 1:length(data_dirs) % for every data directory
-                d = dir([data_dirs{ff} '\*.ntt']);
+                d = dir( fullfile(data_dirs{ff},'*.ntt') );
                 d([d.bytes]==16384) = []; % remove files that only contain a header
                 fnames_ntt = {d.name};
                 tets_found = cell2mat(cellfun(@str2num,replace(fnames_ntt,{'TT','.ntt','.NTT',},''),'UniformOutput',false));
@@ -68,7 +84,7 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             % find stereotrodes in each sub directory
             p_ste = 1:1024;
             for ff = 1:length(data_dirs) % for every data directory
-                d = dir([data_dirs{ff} '\*.nst']);
+                d = dir( fullfile(data_dirs{ff},'*.nst') );
                 d([d.bytes]==16384) = []; % remove files that only contain a header
                 fnames_ntt = {d.name};
                 tets_found = cell2mat(cellfun(@str2num,replace(fnames_ntt,{'ST','.nst','.NST',},''),'UniformOutput',false));
@@ -105,7 +121,7 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
             data_dirs = data_dirs(~ismember(data_dirs,{'klustest','.','..'}) & [cnames.isdir]');
 
             % find which tetrodes are present            
-            cnames = dir([data_dirs{1} '\' data_dirs{1} '.mountainsort\output*']); % list all cut files corresponding to the given combined name
+            cnames = dir( fullfile(data_dirs{1},[data_dirs{1} '.mountainsort'],'output*') ); % list all cut files corresponding to the given combined name
             clist = {cnames.name}.'; % get their names
             cnums = cellfun(@(x) regexp(x,'\d+','match'),clist,'UniformOutput',false); % extract just the number part of the name
             tets = cellfun(@(x) str2double(x),cnums); % convert to an integer, these numbers are the existing tetrodes (cut files)

@@ -1,46 +1,59 @@
 function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,snames,new_srate,mapset)
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> DESCRIPTION
-% FUNCTION  short desc.
-% long description
+% get_pos_for_klustest load position data from .pos files or equivalent
+% Data loading function for klustest, given a data format type, and some
+% settings, finds .pos files (Tint format) or .nvt files (Neuralynx format) and
+% extracts positions, smoothes them, extrapolates missing data, removes jumps in
+% the data, computes head direction, angular head velocity and displacement.
 %
-% USAGE:
-%       [out] = template(in) process with default settings
-% 
-%       [out] = template(in,optional1) process using optional argument 1
-% 
-%       [out] = template(___,Name,Value,...) process with Name-Value pairs used to control aspects 
-%       of the process
-% 
-%       Parameters include:
-% 
-%       'param1'          -   (default = X) Scalar value, parameter to do something
-% 
-%       'param2'          -   (default = X) Scalar value, parameter to do something
-% 
-% INPUT:
-%       in    - input as a vector
+% USAGE
 %
-% OUTPUT:
-%       out   - output as a vector
+% [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,snames,new_srate,mapset)
 %
-% EXAMPLES:
-%       % run function using default values
-%       out = template(in,varargin)
+% INPUT
 %
-% See also: FUNCTION2 FUNCTION3
+% 'formats' - Structure, contains the format type but also information about the tracking LEDs
+%
+% 'data_dirs' - Data directories, output from get_tets_for_klustest
+%
+% 'snames' - Session names we want to load, output from get_tets_for_klustest
+%
+% 'new_srate' - New sample rate we want for the position data, Hz
+%
+% 'mapset' - Structure, configuration file from klustest
+%
+% OUTPUT
+%
+% 'pos' - Table, 'pox','poy','pot','pov','poh','pod','poa'
+%       (x, y, time, speed, head direction, displacement direction, angular head
+%       velocity)
+%
+% 'data_intervals' - Nx2, start and end time of each session
+%
+% 'tstart' - Start time of the recordings, can be added later to get actual time
+%
+% NOTES
+% 1. Phy data format is experimental
+%
+% 2. Function is not really intended to be used without klustest
+% 
+% SEE ALSO kwiktint klustest read_rawpos Nlx2MatVT
 
-% HISTORY:
-% version 1.0.0, Release 00/00/00 Initial release
+% HISTORY
 %
-% Author: Roddy Grieves
-% Dartmouth College, Moore Hall
-% eMail: roddy.m.grieves@dartmouth.edu
-% Copyright 2021 Roddy Grieves
+% version 1.0.0, Release 24/08/16 Initial release, decided to create specific loading functions for klustest
+% version 1.0.1, Release 04/04/18 Commenting and formatting for klustest update
+% version 1.0.2, Release 29/11/25 Updates for GitHub release
+% version 1.0.3, Release 16/12/25 updated filenames for cross platform flexibility
+% version 1.0.4, Release 16/12/25 improved comments, not ideal but detailed enough for now
+%
+% AUTHOR 
+% Roddy Grieves
+% University of Glasgow, Sir James Black Building
+% Neuroethology and Spatial Cognition Lab
+% eMail: roddy.grieves@glasgow.ac.uk
+% Copyright 2025 Roddy Grieves
 
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Heading 3
-%% >>>>>>>>>>>>>>>>>>>> Heading 2
-%% >>>>>>>>>> Heading 1
-%% >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FUNCTION BODY
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
     dataformat = formats.pos;
     total_duration = 0;
 
@@ -75,7 +88,7 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
 
                     case {'kwikcut','neuralynx'}
                         [~,b,~] = fileparts(data_dirs{ff});
-                        [potn, ~, ~, ~, targets, ~, ~] = Nlx2MatVT([b '\VT1.nvt'], [1 1 1 1 1 1], 1, 1, [] );  
+                        [potn, ~, ~, ~, targets, ~, ~] = Nlx2MatVT(fullfile(b,'VT1.nvt'), [1 1 1 1 1 1], 1, 1, [] );  
                         potn = potn / 1e6; % convert microseconds to seconds
                         
                         % extract the coloured LED points
@@ -100,9 +113,9 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                         end
 
                     case {'phy'}
-                        cnames = dir([data_dirs{ff} '\' data_dirs{ff} '*.videoPositionTracking*']); % list all cut files corresponding to the given combined name
+                        cnames = dir( fullfile(data_dirs{ff},[data_dirs{ff} '*.videoPositionTracking*']) ); % list all cut files corresponding to the given combined name
                         clist = {cnames.name}.'; % get their names                        
-                        dat = readTrodesExtractedDataFile([data_dirs{ff} '\' clist{1}]);    
+                        dat = readTrodesExtractedDataFile( fullfile(data_dirs{ff},clist{1}) );    
                         potn = dat.fields(find(strcmp({dat.fields.name},'time'))).data;
                         potn = double(potn) .* (1/30000); % convert samples to seconds
                         poxn = double(dat.fields(find(strcmp({dat.fields.name},'xloc'))).data);
@@ -225,14 +238,14 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
             for ff = 1:length(data_dirs) % for every data directory  
                 % load neuralynx time values
                 disp(sprintf('\t\t loading'))
-                [potn, ~, ~, ~, ~, ~, ~] = Nlx2MatVT([data_dirs{ff} '\VT1.nvt'], [1 1 1 1 1 1], 1, 1, [] );  
+                [potn, ~, ~, ~, ~, ~, ~] = Nlx2MatVT( fullfile(data_dirs{ff},'VT1.nvt'), [1 1 1 1 1 1], 1, 1, [] );  
                 potn = potn ./ 1e6; % convert microseconds to seconds
                 data_intervals(ff,:) = [min(potn) max(potn)]; % start and end of this session
                 total_time = diff(data_intervals(ff,:));
                 disp(sprintf('\b | %.1fs (%.1f mins)',total_time,total_time/60))   
                 
                 % load 3D trajectory data
-                fcheck = [pwd '\3Dreconstruction\' snames{ff} '_merged.txt'];
+                fcheck = fullfile(pwd,'3Dreconstruction',[snames{ff} '_merged.txt']);
                 if exist(fcheck,'file') % check it exists
                     cdata = readtable(fcheck,'Delimiter','\t');
                 else
