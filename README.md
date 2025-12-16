@@ -1,52 +1,71 @@
 # klustest
 Klustest, cluster analysis tool in Matlab.
 
-Following automated or manual spike sorting using Klustakwik (see [kwiktint](https://github.com/Neuroesc/kwiktint)), manual curation and refinement (see Tint), this Matlab function loads the spike sorted data, performs analyses (see below), creates a summary figure and saves an output in Matlab table format.
+Following automated or manual spike sorting using Klustakwik (see [kwiktint](https://github.com/Neuroesc/kwiktint)) and manual curation and refinement (see Tint), this Matlab function loads the spike sorted data, performs analyses (see below), creates a summary figure and saves an output in Matlab table format.
 
-
-
-prepares command line instructions and files necessary to automatically run Klustakwik (via Tint) on Axona recording files. The function can automatically move from one tetrode to the next and spike sort multiple tetrodes simultaneously, saving the user a lot of time. This function also allows merging separate sessions into a single, combined output. Because merging is performed by Tint there is no risk or errors during concatenation. Merging is preferable when neurons are recorded across multiple sessions as all of the sessions will be spike sorted together, ensuring consistency. Any klustakwik settings that can be personalised in Tint can be specified in kwiktint. Additionally, kwiktint will automatically exclude grounded/LFP recording channels from spike sorting.
-
-<img width="2417" height="778" alt="image" src="https://github.com/user-attachments/assets/833dcdc8-e484-451c-8acd-d21d17621c4a" />
+<img width="3627" height="2107" alt="Picture1" src="https://github.com/user-attachments/assets/e8478c3a-23c5-4caa-a2d5-72b273505dc3" />
 
 > [!NOTE]
 > This function is intended to run after spike sorting using [kwiktint](https://github.com/Neuroesc/kwiktint).
 
 # Outputs
-This function performs spike-time analyses and creates spike-time visualisation plots:
+This function performs spatial analyses and creates spatial modulation visualisation plots:
+- Plots positions and spikes
+- Plots the firing rate map (see [ratemapper](https://github.com/Neuroesc/rate_mapper))
+  - calculates spatial information content, sparsity, coherence
+- Plots the spatial autocorrelation
+  - calculates grid score, wavelength, orientation
+
+Waveform plots and quantification:
+- Plots the mean and standard deviation waveforms and a random sample
+  - calculates width of waveform
+  - all waveforms are converted to volts
+
+Cluster quality plots and quantification:
+ - Mahalanobis distance (within- vs between-cluster distances)
+   - calculates isolation distance and l-ratio
+ - Feature space (feature 1 vs 2 for highest amplitude channel)
+
+Head direction plots and quantification:
+- Linear head direction and dwell time plot
+  - calculates Rayleigh vector length, preferred firing direction
+- Polar head direction plot and dwell time
+- Split, half-session, linear head direction plots 
+
+Spike-time analyses and visualisation:
 - Plots 50 ms inter-spike-interal
   - calculates ISI full width to half maximum
   - calculates burst index
 - Plots 50 ms higher order inter-spike-interval (i.e. spike autocorrelograms)
   - calculates proportional refractory period violations
 - Plots 500 ms higher order inter-spike-interval (i.e. spike autocorrelograms)
-  - calculates theta index
-  - calculates theta frequency
 - Plots theta-phase spike relationship
   - calculates calculates Rayleigh vector length (theta modulation)
   - calculates preferred theta phase
+- Raster plot
 
+Movement modulation plots and quantification:
+- Plots running speed vs firing rate linear relationship
+  - calculates speed score, slope, y-intercept
+- Plots angular head velocity vs firing rate
+
+Local field potential:
+- Plots the frequency of spikes vs theta phase
+  - calculates Rayleigh vector length (theta modulation)
+  - calculates preferred theta phase
 
 # Usage
 process files with default settings:
 ```
-kwiktint()
+klustest()
 ```
-
-'Screening mode'  - If Matlab is in a directory containing only one session (1 .set file) and no inputs are given this function will automatically analyse that session and look for all tetrodes. Output files are named 'kwiktint'.  
-
-'Experiment mode' - If multiple .set files are present the function will ask the user to identify which sessions to analyse. It will then assume these sessions should be kkwiked together and that all tetrodes should be analysed. Output files are named 'kwiktint'.  
-
-'Batch mode'      - If you wish to kkwik multiple sessions, but keep the outputs seperate and in different .cut files then run the function with the 'combine' input set to 0. The function will continue to ask which sessions should be analysed, but these will be kkwiked seperately. Output files are named after each original session name, to avoid overwriting anything  
-
 process with Name-Value pairs used to control aspects of the cluster cutting:
 ```
 kwiktint(Name,Value,...)
 ```
-<img width="724" height="596" alt="image" src="https://github.com/user-attachments/assets/415573c9-7ab5-43e5-bd4e-fc1ea3e6a5b4" />
+<img width="1201" height="671" alt="image" src="https://github.com/user-attachments/assets/fa4d86a3-f3c2-4cf3-8326-f6eeec5be179" />
 
 # Parameters
-
 'combine'          -   (default = true) Logical or scalar, set to 1 or true to combine multiple .set files into one output, set to 0 or false to analyse sessions individually. If sessions are to be combined, they should be named in numerically or alphabetically ascending order, matching the order they were recorded. TINT will always order them in this way when they are opened or kkwiked, so for continuity they should be named this way. I name recordings using this convention:
 >(date in format yymmdd)(a-z order of recording)_(name of maze)
 
@@ -62,8 +81,6 @@ kwiktint(Name,Value,...)
 
 > [!NOTE]
 > Any klustakwik settings that can be personalised in Tint can also be specified in kwiktint.
-
-<img width="1613" height="743" alt="image" src="https://github.com/user-attachments/assets/ee3dae1b-1c15-4bd6-9102-59676392968d" />
 
 # Examples
 run function using default values
