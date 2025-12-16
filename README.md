@@ -12,9 +12,9 @@ Following automated or manual spike sorting using Klustakwik (see [kwiktint](htt
 This function performs spatial analyses and creates spatial modulation visualisation plots:
 - Plots positions and spikes
 - Plots the firing rate map (see [ratemapper](https://github.com/Neuroesc/rate_mapper))
-  - calculates spatial information content, sparsity, coherence
+  - calculates [spatial information content](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [sparsity](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [coherence](https://dx.doi.org/10.1523%2FJNEUROSCI.1704-07.2007)
 - Plots the spatial autocorrelation
-  - calculates grid score, wavelength, orientation
+  - calculates [grid score](https://doi.org/10.1126/science.1188210), wavelength, orientation
 
 Waveform plots and quantification:
 - Plots the mean and standard deviation waveforms and a random sample
@@ -23,30 +23,30 @@ Waveform plots and quantification:
 
 Cluster quality plots and quantification:
  - Mahalanobis distance (within- vs between-cluster distances)
-   - calculates isolation distance and l-ratio
+   - calculates [isolation distance and l-ratio](https://doi.org/10.1016/j.neuroscience.2004.09.066)
  - Feature space (feature 1 vs 2 for highest amplitude channel)
 
 Head direction plots and quantification:
 - Linear head direction and dwell time plot
-  - calculates Rayleigh vector length, preferred firing direction
+  - calculates [Rayleigh vector length](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics), preferred firing direction
 - Polar head direction plot and dwell time
 - Split, half-session, linear head direction plots 
 
 Spike-time analyses and visualisation:
 - Plots 50 ms inter-spike-interal
   - calculates ISI full width to half maximum
-  - calculates burst index
+  - calculates [burst index](https://doi.org/10.1002/hipo.22002)
 - Plots 50 ms higher order inter-spike-interval (i.e. spike autocorrelograms)
-  - calculates proportional refractory period violations
+  - calculates proportional [refractory period violations](https://doi.org/10.1152/jn.00699.2015)
 - Plots 500 ms higher order inter-spike-interval (i.e. spike autocorrelograms)
 - Plots theta-phase spike relationship
-  - calculates calculates Rayleigh vector length (theta modulation)
+  - calculates calculates [Rayleigh vector length](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics) (theta modulation)
   - calculates preferred theta phase
 - Raster plot
 
 Movement modulation plots and quantification:
 - Plots running speed vs firing rate linear relationship
-  - calculates speed score, slope, y-intercept
+  - calculates [speed score, slope, y-intercept](https://doi.org/10.1038/nature14622)
 - Plots angular head velocity vs firing rate
 
 Local field potential:
@@ -66,32 +66,25 @@ kwiktint(Name,Value,...)
 <img width="1201" height="671" alt="image" src="https://github.com/user-attachments/assets/fa4d86a3-f3c2-4cf3-8326-f6eeec5be179" />
 
 # Parameters
-'combine'          -   (default = true) Logical or scalar, set to 1 or true to combine multiple .set files into one output, set to 0 or false to analyse sessions individually. If sessions are to be combined, they should be named in numerically or alphabetically ascending order, matching the order they were recorded. TINT will always order them in this way when they are opened or kkwiked, so for continuity they should be named this way. I name recordings using this convention:
->(date in format yymmdd)(a-z order of recording)_(name of maze)
+'tetrodes'      -   Numeric vector that specified the tetrodes to run on (i.e. [1 2 3 4 5 6] would run on tetrodes 1 to 6). Default value is 1:16
 
-'tetrodes'         -   (default = 1:16) Vector of tetrodes to be analysed i.e. [1 2 3 4], the function will run on the included tetrodes if they are available, missing tetrodes are ignored
+'clusters'      -   Numeric vector that specifies the clusters to run on. Set to 0 to run on all clusters. Default value is 0
 
-'outname'          -   (default = 'kwiktint') String, the file name to use for combined outputs
+'rname'         -   String or charcter vector specifying the rat name This is used in the sdata structure so its important to ensure this is correct. Default value is the name of the parent directory
 
-'assume_all_set'   -   (default = true) Logical or scalar, set this to 1 or true and the function will always just assume you want to analyse all available .set files, it will not ask you to select them I always separate sessions (i.e. all the recordings related to one data collection) into different directories, so I always want to combine all .set files in a directory. Some people have other conventions like saving all of the recordings for a day in a directory, in which case they would need to specify the files each time
+'outname'       -   String or charcter vector specifying the output filename used by klustest - i.e. figures will be saved in a folder named this. Default value is 'klustest'.
 
-'backup_cuts'      -   (default = true) Logical or scalar, set to 1 or true and kwiktint will backup .cut files if they already exist, the backups are named with the exact date/time they are backed up appended at the end of the extension and saved in a 'kwiktint' directory alongside the data
-
-'max_tp'           -   (default = 3) Scalar specifying how many tetrodes can be analysed simultaneously or how many instances of TINT can be open simultaneously, includes ones opened by the user. This means if you open a copy of TINT manually to do some manual cluster cutting etc klustakwik will only run max_tp-1 copies of TINT.
+'cname'         -   String or charcter vector specifying the output filename used by kwiktint - or the name used for klustakwiked files. Default value is 'kwiktint'.
 
 > [!NOTE]
-> Any klustakwik settings that can be personalised in Tint can also be specified in kwiktint.
+> When merging and splitting sessions, additional information needs to be provided within the klustest code
 
 # Examples
 run function using default values
 ```
-kwiktint()
+klustest()
 ```
 run function using default values, but only on tetrodes 1 and 5
 ```
-kwiktint('tetrodes',[1 5])
-```
-run function using default values, all specified
-```
-kwiktint('combine',1,'tetrodes',1:16,'outname','kwiktint','assume_all_set',1,'backup_cuts',1,'max_tp',3)
+klustest('tetrodes',[1 5])
 ```
