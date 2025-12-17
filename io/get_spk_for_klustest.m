@@ -58,7 +58,7 @@ function [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(dataformat,data_dirs
 % Copyright 2025 Roddy Grieves
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
-    switch dataformat
+    switch lower(dataformat)
         case {'kwiktint'}
             spk_srate = 48e3;
             spk = cell(1,size(tets,1));
@@ -83,8 +83,8 @@ function [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(dataformat,data_dirs
                     spikes = permute(cat(3,ch1,ch2,ch3,ch4),[2 3 1]); % samps x channels x spikes
                     all_wav = cat(3,all_wav,spikes);
                 end
-                spk{tt} = all_spt - tstart;
-                wav{tt} = all_wav;
+                spk{1,tets(tt)} = all_spt - tstart;
+                wav{1,tets(tt)} = all_wav;
                 % wavtime = (( 1:size(spikes,1) ) -8 ) * (1/spk_srate) * 1e03;
                 wavtime = linspace(0,1000,50)-200;
                 % From the dacqUSB manual (pp 40)
@@ -122,8 +122,8 @@ function [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(dataformat,data_dirs
                     spikes = spikes .* adbv .* 10^6; % convert spike AD to volts, then to microvolts
                     all_wav = cat(3,all_wav,spikes);
                 end
-                spk{tt} = all_spt;
-                wav{tt} = all_wav;
+                spk{1,tets(tt)} = all_spt;
+                wav{1,tets(tt)} = all_wav;
                 wavtime = (( 1:size(spikes,1) ) -8 ) * (1/spk_srate) * 1e03;
     
                 disp(sprintf('\t\t...%d spikes %s',numel(all_spt)))
@@ -147,8 +147,8 @@ function [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(dataformat,data_dirs
                     spikes = spikes .* adbv .* 10^6; % convert spike AD to volts, then to microvolts
                     all_wav = cat(3,all_wav,spikes);
                 end
-                spk{tt} = all_spt;
-                wav{tt} = all_wav;
+                spk{1,tets(tt)} = all_spt;
+                wav{1,tets(tt)} = all_wav;
                 wavtime = (( 1:size(spikes,1) ) -8 ) * (1/spk_srate) * 1e03;
     
                 disp(sprintf('\t\t...%d spikes %s',numel(all_spt)))
@@ -195,8 +195,8 @@ function [spk,wav,spk_srate,wavtime] = get_spk_for_klustest(dataformat,data_dirs
                     all_wav = cat(3,all_wav,-waves);     
     
                 end
-                spk{tets(tt)} = all_spt;
-                wav{tets(tt)} = all_wav;
+                spk{1,tets(tt)} = all_spt;
+                wav{1,tets(tt)} = all_wav;
                 wavtime = (gwfparams.wfWin(1) : 1 : gwfparams.wfWin(2)) * (1/spk_srate) * 1e03;
     
                 disp(sprintf('\t\t...%d spikes %s',numel(all_spt)))            

@@ -47,7 +47,7 @@ function [hdata,fname] = get_set_for_klustest(dataformat,config)
     hdata = table;
     hdata.date = datetime("now",'format','yyyyMMddHHmmss'); % default is now
 
-    switch dataformat
+    switch lower(dataformat)
         case {'kwiktint'}
             % d = dir([config.snames{1} '\*.set']);
             % fnames_set = {d.name};

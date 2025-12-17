@@ -57,7 +57,7 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
     dataformat = formats.pos;
     total_duration = 0;
 
-    switch dataformat
+    switch lower(dataformat)
         case {'kwikcut','neuralynx','phy','kwiktint'}
         % we want to load position data directly from Neuralynx data files
         % i.e. .nvt files
@@ -86,7 +86,7 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                         tdata(:,1:2) = [led_pos(:,1,1) led_pos(:,1,2)];
                         tdata(:,3:4) = [led_pos(:,2,1) led_pos(:,2,2)];
 
-                    case {'kwikcut','neuralynx'}
+                    case {'kwikcut','neuralynx','Neuralynx'}
                         [~,b,~] = fileparts(data_dirs{ff});
                         [potn, ~, ~, ~, targets, ~, ~] = Nlx2MatVT(fullfile(b,'VT1.nvt'), [1 1 1 1 1 1], 1, 1, [] );  
                         potn = potn / 1e6; % convert microseconds to seconds

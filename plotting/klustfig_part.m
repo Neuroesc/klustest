@@ -286,7 +286,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,config)
 
 %%%%%%%%%%%%%%%% CLUSTER QUALITY
         axiso = axes('Units','pixels','Position',[axwav.Position(1)+20 axwav.Position(2)-axwav.Position(4)-55 axwav.Position(3)+30 axwav.Position(4)]);
-            dists = double(quals{tet_now}{clu_now});
+            dists = double(quals{1,tet_now}{clu_now});
             if ~isempty(dists)
                 h1 = dists(2,:)./sum(dists(2,:));
                 h2 = dists(3,:)./sum(dists(3,:));
@@ -312,12 +312,11 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,config)
             set(axiso,'yticklabel',num2str(get(gca,'ytick')','%.2f'))                                
             axiso.XTick = [0 1 10 100 1000 10000 100000];
             text(0,1.05,sprintf('Iso-d: %.2f, Lratio: %.3f',sdata.isod(1),sdata.isod(2)),'Units','normalized','FontSize',fsiz,'HorizontalAlignment','left')            
-            
-                                
+                         
 %%%%%%%%%%%%%%%% FEATURE SPACE
         axfet = axes('Units','pixels','Position',[axiso.Position(1) axiso.Position(2)-axiso.Position(4)-55 axiso.Position(3) axiso.Position(4)]);
             clu = pdata.clusters{tet_now};
-            fet = double(fets{tet_now});
+            fet = double(fets{1,tet_now});
             maxwavs = max(sdata.wave_mean{1},[],2);
             [~,dindx] = sort(maxwavs,1,'descend'); % find the order of these values
             nch = sum(~cell2mat(cellfun(@isempty,wav_now,'UniformOutput',false)));

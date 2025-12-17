@@ -62,7 +62,7 @@ function [dat,lfp_srate] = get_lfp_for_klustest(dataformat,data_dirs,tstart,ds)
        tstart = 0;
     end
     
-    switch dataformat
+    switch lower(dataformat)
         case {'kwiktint'}
             lfpt = [];
             lfp = [];
@@ -97,7 +97,7 @@ function [dat,lfp_srate] = get_lfp_for_klustest(dataformat,data_dirs,tstart,ds)
             
             dat = [lfp(:) lfpt(:) theta_phase(:) theta_power(:)];
     
-        case {'Neuralynx'}
+        case {'neuralynx'}
             lfpt = [];
             lfp = [];
             lfp_channel = 1;

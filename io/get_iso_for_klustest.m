@@ -61,7 +61,8 @@ function [isods,quals,feats] = get_iso_for_klustest(dataformat,config,tets,clus,
         case {'kwikcut','kwiktint','phy','klustakwik'}
             isods = cell(1,size(tets,1));
             feats = cell(1,size(tets,1));
-            quals = cell(1,size(tets,1));        
+            quals = cell(1,size(tets,1));  
+
             for tt = 1:size(tets,1)
                 if tt==1
                     disp(sprintf('\t\t...electrode: %d',tets(tt,1)))             
@@ -103,7 +104,7 @@ function [isods,quals,feats] = get_iso_for_klustest(dataformat,config,tets,clus,
                         fetindx = max(fdata)~=min(fdata); % logical vector where 0 = dead channels
     
                         % get cluster data
-                        clu = clus{tt}; 
+                        clu = clus{1,tets(tt)}; 
                         fclose(fid);
     
                     case {'phy'}
@@ -144,13 +145,6 @@ function [isods,quals,feats] = get_iso_for_klustest(dataformat,config,tets,clus,
                     % determine spikes inside vs outside cluster
                     spikes_in = sum(cindx); % number of cluster spikes
     
-                    % we need at least as many spikes as features, but not more than half the total number of spikes           
-                    if spikes_in < (nfets*nch) || spikes_in > numel(clu)/2 
-                        isod(cnow) = NaN;
-                        lrat(cnow) = NaN;
-                        continue
-                    end
-    
                     % Compute Mahalanobis distance between spikes inside (mdist_in) and outside (mdist_out) the cluster
                     mdist = mahal(fdata(:,fetindx),fdata(cindx,fetindx));
                     mdist_in = mdist(cindx);
@@ -174,19 +168,24 @@ function [isods,quals,feats] = get_iso_for_klustest(dataformat,config,tets,clus,
                     % ax = gca;
                     % ax.XScale = 'log';
     
-                    % Determine the Mahalanobis of the Nth closest spike outside the cluster (where N is the number of spikes inside the cluster)
-                    mdist_out_sorted = sort(mdist_out,'ascend');
-                    isod(cnow) = mdist_out_sorted(spikes_in);    
-    
-                    % Calculate l-ratio
-                    lquant = sum(1 - chi2cdf(mdist_out,nfets)); % the L quantity
-                    lrat(cnow) = lquant / spikes_in; % Lratio is defined as L divided by the total number of spikes in the cluster
+                    % we need at least as many spikes as features, but not more than half the total number of spikes           
+                    if spikes_in < (nfets*nch) || spikes_in > numel(clu)/2 
+                        isod(cnow) = NaN;
+                        lrat(cnow) = NaN;
+                    else
+                        % Determine the Mahalanobis of the Nth closest spike outside the cluster (where N is the number of spikes inside the cluster)
+                        mdist_out_sorted = sort(mdist_out,'ascend');
+                        isod(cnow) = mdist_out_sorted(spikes_in);    
+        
+                        % Calculate l-ratio
+                        lquant = sum(1 - chi2cdf(mdist_out,nfets)); % the L quantity
+                        lrat(cnow) = lquant / spikes_in; % Lratio is defined as L divided by the total number of spikes in the cluster                        
+                    end
                 end
-                isods(1,tt) = {[isod(:) lrat(:)]}; % [isolation distance, lratio]
-                feats(1,tt) = {int16(fdata)}; % feature space, we don't need a lot of precision for plotting
-                quals(1,tt) = {dists}; % [bin x-values; within cluster distances; between cluster ditances]        
+                isods(1,tets(tt)) = {[isod(:) lrat(:)]}; % [isolation distance, lratio]
+                feats(1,tets(tt)) = {int16(fdata)}; % feature space, we don't need a lot of precision for plotting
+                quals(1,tets(tt)) = {dists}; % [bin x-values; within cluster distances; between cluster ditances]  
             end
-            
     end
 
 

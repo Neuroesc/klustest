@@ -51,7 +51,7 @@ function [tets,snames,data_dirs] = get_tets_for_klustest(dataformat,config)
 % Copyright 2025 Roddy Grieves
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
-    switch dataformat
+    switch lower(dataformat)
         case {'kwikcut','neuralynx'}
             % find possible directories
             possible_dnames = dir(pwd);

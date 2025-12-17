@@ -169,7 +169,6 @@ function klustest(varargin)
 % version 20.0.2, Release 16/12/25 updated get_iso_for_klustest to use logarithmic scale for histograms
 % version 20.0.3, Release 16/12/25 removed inset CDFs in isolation graph in klustfig_part
 % version 20.0.3, Release 16/12/25 updated filenames for cross platform flexibility
-
 %
 % AUTHOR 
 % Roddy Grieves
@@ -179,6 +178,7 @@ function klustest(varargin)
 % Copyright 2025 Roddy Grieves
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INPUTS
+%%%%%%%%%%%%%%%% ARGUMENT CHECK
     p = inputParser;
     addParameter(p,'tetrodes',1:16,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
     addParameter(p,'clusters',0,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
@@ -196,12 +196,11 @@ function klustest(varargin)
     override.use_groups = 1;
     override.quickstart = 0; % 0 = use precomputed LFP and cluster quality when available
     config.spatial_shuffles = 1; % 1 = calculate probability of grid score, spatial info, rayleigh vector
-    config.skipfigs = 1; % 1 = skip making a figure if it exists already    
+    config.skipfigs = 0; % 1 = skip making a figure if it exists already    
     config.save_figs = 1; % 1 = make and save figures (VERY time consuming, takes about 90% of klustest's time)
     config.fast_figures = 1; % 1 = 4-5x faster figure saving, but at a slightly lower quality
     config.fig_res = 250; % resolution at which to save figures
     config.n_waveforms = 250; % number of waveforms to show
-    config.max_plot_fets = 1e5; % set to 0 to show all feature points in feature space
     config.max_plot_spikes = 1e5; % set to 0 to show all spikes in spike & position plot
     config.show_figs = 'off'; % display figures before saving
     
@@ -210,12 +209,12 @@ function klustest(varargin)
     mapset.jumpcut      = 5; % standard deviations, jumps in the position data with a zscored distance between them greater than this will be removed and interpolated
     mapset.jumpwindow   = 10; % number of samples over which to smooth jump detection, higher values will remove more data before/after jumps, increase this if outliers are being left behind
     mapset.method       = 'histogram';
-    mapset.binsize      = 20; % (mm) firing rate map bin size
-    mapset.ssigma       = 40; % (mm) firing rate map smoothing sigma
+    mapset.binsize      = 25; % (mm) firing rate map bin size
+    mapset.ssigma       = 30; % (mm) firing rate map smoothing sigma
     mapset.padding      = 10; % (mm) how much to pad the edges of the firing rate map
     mapset.mindwell     = 0.01; % (default 0.1) total number of seconds that rat has to be in a bin for it to be filled, for adaptive method this controls how big the bins will be expanded
     mapset.mindist      = 40; % (mm, default 1) used by adaptive and gaussian method, only bins within this distance of some position data will be filled, bigger means more filled (blue) bins
-    mapset.smethod      = 1; % smoothing method, 1 = before division, 2 = after, 3 = no smoothing 
+    mapset.smethod      = 2; % smoothing method, 1 = before division, 2 = after, 3 = no smoothing 
     mapset.zcut         = 1; % z-score for field detection in z-scored firing rate maps   
     mapset.frcut        = 1; % place fields must have a peak firing rate at least greater than this value
     mapset.arcut        = 400; % cm2, place fields must have a total area greater than this value
@@ -248,7 +247,6 @@ function klustest(varargin)
     formats.spk         = 'kwiktint';
     formats.lfp         = 'kwiktint';
     formats.iso         = 'kwiktint';   
-    % config.cname        = 'kwiktint';
     formats.pos         = 'kwiktint';
     formats.front_led_color = 1; % 1 = red, 2 = green, 3 = blue
     formats.back_led_color = 2; % 1 = red, 2 = green, 3 = blue
@@ -256,12 +254,12 @@ function klustest(varargin)
 
 %%%%%%%%%%%%%%%% PARTITION SETTINGS
     % part_names gives the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
-    % part_names = {'arena1'}';
-    part_names = {'arena1','hills','arena2'}';    
+    part_names = {'session1'}';
+    % part_names = {'session1','session2','session3'}';    
     % part_methods specifies the method of partition, corresponding to each of the names above: 1 = combine everything, 2 = take a recording session, 3 = use digital inputs
     % part_methods must be a cell array with the same length as part_names    
-    % part_methods = {2}';
-    part_methods = {2 2 2}';    
+    part_methods = {2}';
+    % part_methods = {2 2 2}';    
     % part_intervals gives vector(s) indicating which intervals to include in each partition: 
     % if method = 1 this value is ignored
     % if method = 2 this should specify which recording sessions to include
@@ -270,13 +268,13 @@ function klustest(varargin)
     % i.e. if part_methods={2; 2; 2}, then if part_intervals={1; 2; 3}, rec 1 will go in part 1, rec 2 in part 2 and rec 3 in part 3
     % if part_methods={2; 2; 2; 2; 2}, then if part_intervals={1; [2 4 5]; 3}, rec 1 will go in part 1, rec 2,4 and 5 in part 2 and rec 3 in part 3 
     % if part_methods={2; 3}, then if part_intervals={2; [1 2 3 5 6 7 12]}, rec 2 will go in part 1, part 2 will be made up of the time segments between interval key pairs 1 2 3 5 6 7 12
-    % part_intervals = {1}';
-    part_intervals = {1 2 3}';    
+    part_intervals = {1}';
+    % part_intervals = {1 2 3}';    
     % part_interval_keys specifies what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters
     % i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
     % part_interval_keys must be a cell array with the same length as part_names    
-    % part_interval_keys = {{}}';    
-    part_interval_keys = {{} {} {}}';
+    part_interval_keys = {{}}';    
+    % part_interval_keys = {{} {} {}}';
 
     part_names = {'arena1'}';    
     part_methods = {2}';    
@@ -385,7 +383,7 @@ function klustest(varargin)
             run_get_iso = 0; % do not extract it below              
         end
     end
-    if run_get_iso || true
+    if 1%run_get_iso
         [isods,quals,fets] = get_iso_for_klustest(formats.iso,config,tets,clus,data_dirs);
         disp(sprintf('\t\t...saving to file'))                            
         save(mname,'isods','fets','quals','-mat','-v7.3'); 
@@ -450,10 +448,10 @@ function klustest(varargin)
         elseif tets(tt,2)==1 % stereotrode
             disp(sprintf('\tStereotrode %d | %d of %d (%.f%%)',tets(tt,1),tt,size(tets,1),tt/size(tets,1)*100))
         end
-        clu = clus{tt}; % clusters on this tetrode
+        clu = clus{1,tets(tt)}; % clusters on this tetrode
         clusters = unique(clu(clu>0)); % list on nonzero clusters
-        spt = pdata.spike_times{tt}; % spike times for this tetrode
-        wav_now = wav{tt}; % waveforms for this tetrode
+        spt = pdata.spike_times{1,tets(tt)}; % spike times for this tetrode
+        wav_now = wav{1,tets(tt)}; % waveforms for this tetrode
         
         if isempty(clusters)
             disp(sprintf('\t\tno data clusters'))            
@@ -524,7 +522,7 @@ function klustest(varargin)
                 sdata_temp.spike_times = {single(pspt)}; % the actual spike times, single should be fine as spike times are sampled at 32kHz
                 sdata_temp.nspikes = numel(pspx);
                 sdata_temp.frate = numel(pspx) / (numel(ppot)*(1/pos_srate));           
-                inow = isods{tt};
+                inow = isods{1,tets(tt)};
                 sdata_temp.isod = inow(cc,:); % cluster quality [isolation distance, lratio]
                 if isempty(bdata) || ~any(bdata.partn==sdata_temp.partn) % this part has not been added to bdata yet
                     bdata_temp.pos = { single([ppot(:) ppox(:) ppoy(:) ppoh(:) ppov(:) ppoa(:) ppod]) };

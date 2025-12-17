@@ -47,13 +47,13 @@ function [clus] = get_clu_for_klustest(dataformat,config,tets,data_dirs)
 % Copyright 2025 Roddy Grieves
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
-switch dataformat
+switch lower(dataformat)
     case {'kwiktint'}
         clus = cell(1,size(tets,1));
        
         for tt = 1:size(tets,1)
             [clu,~] = getcut([config.cname '_' num2str(tets(tt)) '.cut']); % this reads the .cut file line by line so that it can be entered into the mtint structure  
-            clus{tt} = uint8( clu(:) );  
+            clus{1,tets(tt)} = uint8( clu(:) );  
 
             nclus = numel(unique(clus{tt}));
             disp(sprintf('\t\t...%d total clusters %s',nclus))
