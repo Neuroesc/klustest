@@ -380,10 +380,37 @@ function klustest(varargin)
         else
             disp(sprintf('\t\t...loading from file'))            
             load(mname,'isods','fets','quals','-mat');
-            run_get_iso = 0; % do not extract it below              
+
+            % if the user previously ran klustest with an incomplete number of
+            % tetrodes or a different number of clusters, we need to recompute it
+            if numel(isods)==size(tets,1)
+                eidx = cell2mat(cellfun(@isempty,isods,'UniformOutput',false)); % find empty cells
+
+
+
+        clu = clus{1,tets(tt)}; % clusters on this tetrode
+        clusters = unique(clu(clu>0)); % list on nonzero clusters
+
+
+
+
+
+
+                if any(~eidx(tets(:,1))) % if any empty cells align with our current list of tetrodes
+                    run_get_iso = 1; % extract it below
+
+                    keyboard
+                else
+                    run_get_iso = 0; % do not extract it below   
+                end
+            else
+                run_get_iso = 1; % extract it below
+
+                keyboard
+            end
         end
     end
-    if 1%run_get_iso
+    if run_get_iso
         [isods,quals,fets] = get_iso_for_klustest(formats.iso,config,tets,clus,data_dirs);
         disp(sprintf('\t\t...saving to file'))                            
         save(mname,'isods','fets','quals','-mat','-v7.3'); 

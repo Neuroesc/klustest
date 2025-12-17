@@ -380,10 +380,25 @@ function klustest(varargin)
         else
             disp(sprintf('\t\t...loading from file'))            
             load(mname,'isods','fets','quals','-mat');
-            run_get_iso = 0; % do not extract it below              
+
+            % if the user previously ran klustest with an incomplete number of
+            % tetrodes or a different number of clusters, we need to recompute it
+            if numel(isods)==size(tets,1)
+                % isods has the correct number of electrodes but does it have the
+                % correct number of clusters?
+                n_clus = cell2mat(cellfun(@(x) numel(unique(x(x>0))),clus,'UniformOutput',false));
+                n_clus_isods = cell2mat(cellfun(@(x) size(x,1),isods,'UniformOutput',false));
+                if all(n_clus==n_clus_isods)
+                    run_get_iso = 0; % do not extract it below
+                else
+                    run_get_iso = 1; % extract it below   
+                end
+            else
+                run_get_iso = 1; % extract it below
+            end
         end
     end
-    if 1%run_get_iso
+    if run_get_iso
         [isods,quals,fets] = get_iso_for_klustest(formats.iso,config,tets,clus,data_dirs);
         disp(sprintf('\t\t...saving to file'))                            
         save(mname,'isods','fets','quals','-mat','-v7.3'); 
