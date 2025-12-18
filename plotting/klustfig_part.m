@@ -75,7 +75,9 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,config)
     flnw = 0.5; % the line width for different plots
 
     % add an annotation to the figure with some important info
-    part_now = pdata.part_config.part_names{pp};
+    part_config = pdata.part_config;
+    part_names = fieldnames(part_config);    
+    part_now = part_names{pp};
     tet_now = sdata.tetrode(1);
     clu_now = sdata.cluster(1);    
     ann_str = sprintf('Cell: %s, Part: %s, Analysed: %s',sdata.uci{1},part_now,datestr(now,'yyyy-mm-dd-HH-MM-SS'));
@@ -91,7 +93,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,config)
 %%%%%%%%%%%%%%%% POSITIONS AND SPIKES   
     axps = axes('Units','pixels','Position',[30,645,400,200]);
         % position and spike data (already cut to this part)
-        part_duration = pdata.part_config.part_duration(pp);
+        part_duration = part_config.(part_now).part_duration;
         ppox = pdata.(part_now).pox;
         ppoy = pdata.(part_now).poy;
         ppot = pdata.(part_now).pot; 
@@ -622,7 +624,7 @@ function klustfig_part(pdata,sdata,pp,wav_now,quals,fets,config)
         hold on
         axis xy on
         xlabel('Time (s)')
-        tvals = pdata.part_config.part_times{pp};
+        tvals = part_config.(part_now).interval_times;
 
         for tt = 1:length(tvals(:,1))
             a1 = line([knnsearch(edg(:),tvals(tt,1)) knnsearch(edg(:),tvals(tt,2))],[0.5 0.5],'Color','r','LineWidth',4);

@@ -169,6 +169,8 @@ function klustest(varargin)
 % version 20.0.2, Release 16/12/25 updated get_iso_for_klustest to use logarithmic scale for histograms
 % version 20.0.3, Release 16/12/25 removed inset CDFs in isolation graph in klustfig_part
 % version 20.0.3, Release 16/12/25 updated filenames for cross platform flexibility
+% version 20.0.4, Release 17/12/25 fixed bug where incomplete cluster quality could be loaded
+% version 21.0.0, Release 17/12/25 readtable/writetable no longer viable for part_config, changing this to 'save' makes the code no longer backward compatible
 %
 % AUTHOR 
 % Roddy Grieves
@@ -193,7 +195,7 @@ function klustest(varargin)
 
     %% overrides
     override.part_config = 0; % 0 = use precomputed part_config file when available
-    override.use_groups = 1;
+    % override.use_groups = 1;
     override.quickstart = 0; % 0 = use precomputed LFP and cluster quality when available
     config.spatial_shuffles = 1; % 1 = calculate probability of grid score, spatial info, rayleigh vector
     config.skipfigs = 0; % 1 = skip making a figure if it exists already    
@@ -205,7 +207,7 @@ function klustest(varargin)
     config.show_figs = 'off'; % display figures before saving
     
     %% Map settings
-    mapset.ppm          = 300;
+    mapset.ppm          = 300; % pixels per meter, can be scalar (same value usd for all sessions) or Nx1, were N = number of sesions
     mapset.jumpcut      = 5; % standard deviations, jumps in the position data with a zscored distance between them greater than this will be removed and interpolated
     mapset.jumpwindow   = 10; % number of samples over which to smooth jump detection, higher values will remove more data before/after jumps, increase this if outliers are being left behind
     mapset.method       = 'histogram';
@@ -218,7 +220,6 @@ function klustest(varargin)
     mapset.zcut         = 1; % z-score for field detection in z-scored firing rate maps   
     mapset.frcut        = 1; % place fields must have a peak firing rate at least greater than this value
     mapset.arcut        = 400; % cm2, place fields must have a total area greater than this value
-    % mapset.drive_height_mm = 20;
     mapset.fix_aspect   = 1; % if set to 1, position plots will be rotated so that they are always landscape (the orientation of the figures and thus the best for visualisation)
     mapset.wave_window  = [-0.2 0.8]; % (default [-0.25 0.75], Axona = [-0.2 0.8]) ms, the time window over which to load and plot waveforms (only used when loading Phy data, but used for all plotting)
     
@@ -253,58 +254,106 @@ function klustest(varargin)
     formats.led_angle_offset = 0; % CCW offset of LEDs on the head
 
 %%%%%%%%%%%%%%%% PARTITION SETTINGS
-    % part_names gives the names you want the outputs to be saved as, these cannot start with a number: i.e. 'session1'
-    part_names = {'session1'}';
-    % part_names = {'session1','session2','session3'}';    
-    % part_methods specifies the method of partition, corresponding to each of the names above: 1 = combine everything, 2 = take a recording session, 3 = use digital inputs
-    % part_methods must be a cell array with the same length as part_names    
-    part_methods = {2}';
-    % part_methods = {2 2 2}';    
-    % part_intervals gives vector(s) indicating which intervals to include in each partition: 
+    % This function is assumed to follow spike sorting using kwiktint. Kwiktint
+    % can merge multiple recording sessions into one output. Klustest
+    % recognises this can and redivide the data back up into indiviual sessions
+    % or 'parts' for analysis and visualisation.
+    % The next section deals with how this division or partitioning works.
+
+    % Each part is defined by a set of characteristics, they each need a name,
+    % which is used when saving the output. Because these are used as structure
+    % field names they cannot start with a number.
+    % Common names might be 'session1' or 'part_3' or 'Arena_1'
+
+    % They need a method for partitioning - do we want to split the merged file
+    % up according to recordings? Do we want to keep some recordings combined?:
+    % 1 = combine everything
+    % 2 = take a recording session
+    % 3 = use digital inputs
+
+    % If the method above is 2 or 3 we also need to specify which intervals
+    % to use as the start and end of the trials we want to extract, or, more
+    % commonly, which recording sessions should be combined into a part:
     % if method = 1 this value is ignored
-    % if method = 2 this should specify which recording sessions to include
+    % if method = 2 this should specify which recording session(s) to include
     % if method = 3 this should specify which digital input pairs to include (inf = use all) 
-    % part_intervals must be a cell array with the same length as part_names    
-    % i.e. if part_methods={2; 2; 2}, then if part_intervals={1; 2; 3}, rec 1 will go in part 1, rec 2 in part 2 and rec 3 in part 3
-    % if part_methods={2; 2; 2; 2; 2}, then if part_intervals={1; [2 4 5]; 3}, rec 1 will go in part 1, rec 2,4 and 5 in part 2 and rec 3 in part 3 
-    % if part_methods={2; 3}, then if part_intervals={2; [1 2 3 5 6 7 12]}, rec 2 will go in part 1, part 2 will be made up of the time segments between interval key pairs 1 2 3 5 6 7 12
-    part_intervals = {1}';
-    % part_intervals = {1 2 3}';    
-    % part_interval_keys specifies what keypresses were used to delineate trial starts and ends {start,end} these can be integers or characters
-    % i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
-    % part_interval_keys must be a cell array with the same length as part_names    
-    part_interval_keys = {{}}';    
-    % part_interval_keys = {{} {} {}}';
 
-    part_names = {'arena1'}';    
-    part_methods = {2}';    
-    part_intervals = {1}';    
-    part_interval_keys = {{}}';
+    % Lastly, if the method is set to 3 (digital inputs), the intervals list
+    % tells us which digital input key pairs to use for the start/end of the trials
+    % we want to include, but we still need to specify what those digital input key
+    % pairs are, some people use 's' and 'e' to mark the start and end of each
+    % trial for example. If we are not using method 3, this value is ignored.
+    % keypresses used to delineate trial starts and ends {start,end} can be integers 
+    % or characters i.e. {1,2} or {'s','e'}, {'1','2'} is the same as {1,2}
 
-    % convert this information into a convenient table (which we will add to later)
-    if isscalar(mapset.ppm) 
-        pratio = repmat(mapset.ppm,size(part_names));
-    else
-        pratio = mapset.ppm(:);
+    % for example, here we create a part named 'session1', it will take data
+    % from a recording session (method 2) which is the first recording made
+    % (interval 1) and we don't need any interval keys.
+    % part_name                               = 'session1';
+    % part_config.(part_name).method          = 2;
+    % part_config.(part_name).intervals       = [1];
+    % part_config.(part_name).interval_keys   = {};
+
+    % Here we create a part named 'session2', it will take data
+    % from recording sessions (method 2) which are the second and third
+    % recordings made (intervals 2 & 3) and we don't need any interval keys.
+    % part_name                               = 'session1';
+    % part_config.(part_name).method          = 2;
+    % part_config.(part_name).intervals       = [2 3];
+    % part_config.(part_name).interval_keys   = {};
+
+    % Here we create a part named 'session3', it will take data
+    % from any recording session that fall between keypresses (method 3)
+    % The interval keys it will use to specify the start and end of each trial
+    % are 's' for starts and 'e' for ends, it will combine the trials
+    % 1,2,3,4,5,6,10,11 and 15:
+    % part_name                               = 'session3';
+    % part_config.(part_name).method          = 3;
+    % part_config.(part_name).intervals       = [1 2 3 4 5 6 10 11 15];
+    % part_config.(part_name).interval_keys   = {'s','e'};
+
+    % space for actual part specification:
+    part_config = struct;
+    part_name                               = 'session1';
+    part_config.(part_name).method          = 2;
+    part_config.(part_name).intervals       = [1];
+    part_config.(part_name).interval_keys   = {};
+    part_name                               = 'session2';
+    part_config.(part_name).method          = 2;
+    part_config.(part_name).intervals       = [2 3 4 5 6];
+    part_config.(part_name).interval_keys   = {};
+    part_name                               = 'session3';
+    part_config.(part_name).method          = 2;
+    part_config.(part_name).intervals       = [7];
+    part_config.(part_name).interval_keys   = {};
+
+    % add additonal information
+    pnames = fieldnames(part_config);
+    for ff = 1:length(pnames)
+        if isscalar(mapset.ppm) 
+            part_config.(pnames{ff}).pratio = mapset.ppm;
+        else
+            part_config.(pnames{ff}).pratio = mapset.ppm(ff);
+        end
     end
-    part_config = table(part_names,part_methods,part_intervals,part_interval_keys,pratio);
     
-    % The part_config table contains basic information about how/where/if to separate the data into different
-    % partitions or parts. For instance if we record an open field, then some sort of maze, then the open field
-    % again, we may want to divide the data into those 3 parts for separate analysis, or we might want to just 
-    % lump everything together if we care about some intrinsic property of the cells
-    % We want to save this table so that in the future we can just run the function with the same settings    
+    % save the part_config so that in the future we can just run the function
+    % with the same settings 
+    jsonText = jsonencode(part_config,'PrettyPrint',true);
     [~,~,~] = mkdir(fullfile(pwd,config.outname)); % create a folder to hold outputs        
-    part_config_fname = fullfile(pwd,config.outname,'part_config.txt');
+    part_config_fname = fullfile(pwd,config.outname,'part_config.json');
     if override.part_config || ~exist(part_config_fname,'file')
-        writetable(part_config,part_config_fname)
+        fid = fopen(part_config_fname,'w');
+        fwrite(fid,jsonText);
+        fclose(fid);
     elseif override.part_config && exist(part_config_fname,'file')
-        part_config_fname2 = fullfile(pwd,config.outname,['part_config_' datetime("now",'format','yyyyMMddHHmmss') '.mat']);      
+        part_config_fname2 = fullfile(pwd,config.outname,['part_config_' datetime("now",'format','yyyyMMddHHmmss') '.json']);     
         [~,~,~] = movefile(part_config_fname,part_config_fname2);
-        writetable(part_config,part_config_fname)
+        fid = fopen(part_config_fname,'w');
+        fwrite(fid,jsonText);
+        fclose(fid);
     end
-    part_config = readtable(part_config_fname);
-    mapset.ppm = part_config.pratio(:,1);
+    part_config = jsondecode(fileread(part_config_fname));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% PREPARE DATA
 %%%%%%%%%%%%%%%% Tetrodes and sessions
@@ -427,15 +476,16 @@ function klustest(varargin)
 
 %%%%%%%%%%%%%%%% Part data
     disp(sprintf('\t...part config'))
-    nparts = size(part_config,1);
+    part_names = fieldnames(part_config);
+    nparts = length(part_names);
     for pp = 1:nparts
-        switch part_config.part_methods(pp)
+        switch part_config.(part_names{pp}).method
             case {1} % if the method is whole session (i.e. everything recorded)
-                part_config.part_times{pp} = data_intervals(:);
+                part_config.(part_names{pp}).interval_times = data_intervals(:);
                 % include all the periods where data were recorded
 
             case {2} % if the method is recording session
-                part_config.part_times{pp} = data_intervals(part_config.part_intervals(pp),:);
+                part_config.(part_names{pp}).interval_times = data_intervals(part_config.(part_names{pp}).intervals,:);
                 % include all the recording periods listed in part_intervals
 
             case {3} % if the method is intervals (keypresses)
@@ -443,7 +493,7 @@ function klustest(varargin)
                 keyboard
                 
         end
-        part_config.part_duration(pp) = sum(part_config.part_times{pp}(:,2)-part_config.part_times{pp}(:,1));        
+        part_config.(part_names{pp}).part_duration = sum(part_config.(part_names{pp}).interval_times(:,2)-part_config.(part_names{pp}).interval_times(:,1));        
     end    
     pdata.part_config = part_config; % a copy of the part_config, this will be extended to include more data that the saved part_config though, table format
     disp(sprintf('\t\t...done'))
@@ -480,15 +530,15 @@ function klustest(varargin)
             for pp = 1:nparts % for every part               
                 sdata_temp = table; % temporary table for this cluster
                 bdata_temp = table;
-                part_now = part_config.part_names{pp};
+                part_now = part_names{pp};
                 if pp==1; disp(sprintf('\b%s ',part_now)); else; disp(sprintf('\b| %s ',part_now)); end
 
                 % cut the position data to include only this part
-                part_times = part_config.part_times{pp};                
+                interval_times = part_config.(part_now).interval_times;
                 if ~isfield(pdata,part_now) || ~isfield(pdata.(part_now),'pox')
                     pos = pdata.pos;
                     pot = pos.pot;
-                    pindax = logical(sum(pot' >= part_times(:,1) & pot' <= part_times(:,2),1));
+                    pindax = logical(sum(pot' >= interval_times(:,1) & pot' <= interval_times(:,2),1));
                     pdata.(part_now).pot = pos.pot(pindax,1); % pos time for this part            
                     pdata.(part_now).pox = pos.pox(pindax,1); % pos x for this part
                     pdata.(part_now).poy = pos.poy(pindax,1); % pos y for this part
@@ -506,7 +556,7 @@ function klustest(varargin)
                 ppoa = pdata.(part_now).pav; % pos (yaw) AHV for this part
                     
                 % cut the spike data to include only this part and cluster
-                sindax = logical(sum(spt' > part_times(:,1) & spt' < part_times(:,2) & (clu==clusters(cc))',1)); % spikes                    
+                sindax = logical(sum(spt' > interval_times(:,1) & spt' < interval_times(:,2) & (clu==clusters(cc))',1)); % spikes                    
                 pspt = spt(sindax); % spike time for this part
                 sidx = knnsearch(ppot,pspt); % nearest neighbour in position data for every spike
                 pspx = ppox(sidx); % spike x for this part
@@ -884,7 +934,7 @@ function klustest(varargin)
     sdata.Properties.CustomProperties.bdata = bdata;   
     fname = fullfile(pwd,pdata.outname,'sdata.mat');
     save(fname,'sdata'); % save session data
-    analysis_log({'klustest'},1,'version',{'v19.0.3'});
+    analysis_log({'klustest'},1,'version',{'v20.0.4'});
     
     % finish up
     toc1 = toc/60;
