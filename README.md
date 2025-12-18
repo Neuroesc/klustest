@@ -151,48 +151,120 @@ Example of some output figures and a visual guide:
 <img width="3627" height="2107" alt="Picture1" src="https://github.com/user-attachments/assets/e8478c3a-23c5-4caa-a2d5-72b273505dc3" />
 
 # Data outputs
-In addition to saving figure outputs, this function outputs spikes, position data and statistics in Matlab table format. This table contains different data types, some are integers while others are matrices or vectors.
-
+## sdata
+In addition to saving figure outputs, this function outputs spikes and statistics in Matlab table format (sdata.mat). This table contains different data types, some are integers while others are matrices or vectors. This table can be loaded using:  
+```
+load('sdata.mat','-mat')
+```  
 Each row of this table contains:
-- rat - String, the rat name, provided as an input ('rname') or assumed to be the last part of the current working directory  
-- date - String, the date of recording, extracted from recording files if possible  
-- partn - Scalar, the part number, given the parts specified in order at the beginning of the file, which part is this?  
-- dir - String, directory of the data  
-- uci - String, unique cell identifier: rat name, recording date, tetrode, cluster  
-- tetrode - Scalar, tetrode this data was recorded on  
-- electrode - Scalar, tetrode this data was recorded on   
-- cluster - Scalar, cluster assignment in the .clu file  
-- spt_pot_index - Nx1 numeric vector, where N = number of spikes, index into the position data, nearest position data point for each spike  
-- spike_times - Nx1 numeric vector, where N = number of spikes, time (s) of each spike since the start of recording  
-- nspikes - Scalar, total number of spikes  
-- frate - Scalar, firing rate (Hz)  
-- isod - 1x2, Cluster isolation distance and L-ratio (see [here](https://doi.org/10.1016/j.neuroscience.2004.09.066))  
-- wave_width - Scalar, width of waveform, peak to trough of mean waveform (of the channel with the highest amplitude) (see [here](https://doi.org/10.7554/eLife.15986))  
-- wave_amps - Scalar, waveform amplitude, peak of mean waveform (of the channel with the highest amplitude)  
-- wave_mean - NxM, N = number of recording channels, M = spike samples, mean waveform for each channel (volts)  
-- wave_std - NxM, N = number of recording channels, M = spike samples, standard deviation waveform for each channel (volts)  
-- ratemap - NxM, firing rate map (see [here](https://github.com/Neuroesc/rate_mapper.git), [here](https://doi.org/10.1371/journal.pcbi.1011763))  
-- spikemap - NxM, firing rate map (see [here](https://github.com/Neuroesc/rate_mapper.git), [here](https://doi.org/10.1371/journal.pcbi.1011763))    
-- spatial_info - 1x4, spatial information (b/s), spatial information (b/sp), sparsity, coherence, calculated using firing rate map (see [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://dx.doi.org/10.1523%2FJNEUROSCI.1704-07.2007))  
-- nfields - Scalar, number of place fields (regions greater than a set area and with a minimum peak firing rate)  
-- field_data - Nx9 cell array, N = number of fields, for each field: Area, Centroid, WeightedCentroid, MajorAxisLength, MinorAxisLength, Orientation, ConvexHull, PixelIdxList, MaxIntensity  
-- gridmap - NxM, spatial autocorrelation, calculated using firing rate map.  
-- grid_info - 1x3, grid score, grid wavelength, grid orientation, calculated using gridmap (see [here](https://doi.org/10.1126/science.1188210))  
-- grid_field_info - 1x6, field radius, major axis length, minimum axis length, height, width, orientation, calculated using the central peak of gridmap (see [here](https://doi.org/10.1073/pnas.1811867116))  
-- hd_ratemap - Nx1, where N = number of HD bins, head direction firing rate map  
-- hd_info - 1x4, Rayleigh vector length, preferred firing direction, mean angle, SD angle, calculated using hd_ratemap (see [here](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics))  
-- hd_ratemap_half - Nx1 x two columns, where N = number of HD bins, head direction firing rate map for each half of the session (median split)  
-- hd_info_half - 1x8, Rayleigh vector length, preferred firing direction, mean angle, SD angle repeated twice - once for each session half in hd_ratemap_half (see [here](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics))  
-- spatial_info_z - 1x3, spatial information (b/s), grid score and Rayleigh vector length, z-scored relative to a shuffle using the Savelli method (see [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://elifesciences.org/articles/21354))  
-- spatial_info_p - 1x3, spatial information (b/s), grid score and Rayleigh vector length, p-values calculated using a shuffle using the Savelli method (see [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://elifesciences.org/articles/21354))  
-- ahv_curve - Nx1, where N = number of AHV bins, angular head velocity x firing rate map  
-- theta_phase - 1xN, where N = number of theta phase bins, spike histogram relative to theta phase  
-- theta_info - 1x3, Rayleigh vector length, preferred phase (bin with max count), mean angle (average phase) of spike theta phases (see [here](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics))  
-- isi - 1xN, where N = number of interspike interval bins, histogram of interspike intervals  
-- isi_info - not used  
-- burst_index - proportion of ISIs less than 6ms (see [here](https://doi.org/10.1002/hipo.22002))  
-- autocorr_theta - Nx1, where N = number of autocorrelogram bins, large window autocorrelation (usually 500ms, 10ms bins)  
-- autocorr_refrac - Nx1, where N = number of autocorrelogram bins, small window autocorrelation (usually 50ms, 1ms bins)  
-- autocorr_refrac_info - 1x2, number of refractory period violations (ISIs less than 2ms), and the proportion of spikes with a refractory period less than 2ms (see [here](https://doi.org/10.1152/jn.00699.2015))  
-- speed_slope - 1xN, where N = number of speed bins, running speed x firing rate map (see [here](https://doi.org/10.1038/nature14622))  
-- speed_info - 1x3, speed score, slope of linear fit, y-intercept of linear fit (see [here](https://doi.org/10.1038/nature14622))  
+- sdata.rat - String, the rat name, provided as an input ('rname') or assumed to be the last part of the current working directory  
+- sdata.date - String, the date of recording, extracted from recording files if possible  
+- sdata.partn - Scalar, the part number, given the parts specified in order at the beginning of the file, which part is this?  
+- sdata.dir - String, directory of the data  
+- sdata.uci - String, unique cell identifier: rat name, recording date, tetrode, cluster  
+- sdata.tetrode - Scalar, tetrode this data was recorded on  
+- sdata.electrode - Scalar, tetrode this data was recorded on   
+- sdata.cluster - Scalar, cluster assignment in the .clu file  
+- sdata.spt_pot_index - Nx1 numeric vector, where N = number of spikes, index into the position data, nearest position data point for each spike  
+- sdata.spike_times - Nx1 numeric vector, where N = number of spikes, time (s) of each spike since the start of recording  
+- sdata.nspikes - Scalar, total number of spikes  
+- sdata.frate - Scalar, firing rate (Hz)  
+- sdata.isod - 1x2, Cluster isolation distance and L-ratio (see [here](https://doi.org/10.1016/j.neuroscience.2004.09.066))  
+- sdata.wave_width - Scalar, width of waveform, peak to trough of mean waveform (of the channel with the highest amplitude) (see [here](https://doi.org/10.7554/eLife.15986))  
+- sdata.wave_amps - Scalar, waveform amplitude, peak of mean waveform (of the channel with the highest amplitude)  
+- sdata.wave_mean - NxM, N = number of recording channels, M = spike samples, mean waveform for each channel (volts)  
+- sdata.wave_std - NxM, N = number of recording channels, M = spike samples, standard deviation waveform for each channel (volts)  
+- sdata.ratemap - NxM, firing rate map (see [here](https://github.com/Neuroesc/rate_mapper.git), [here](https://doi.org/10.1371/journal.pcbi.1011763))  
+- sdata.spikemap - NxM, firing rate map (see [here](https://github.com/Neuroesc/rate_mapper.git), [here](https://doi.org/10.1371/journal.pcbi.1011763))    
+- sdata.spatial_info - 1x4, spatial information (b/s), spatial information (b/sp), sparsity, coherence, calculated using firing rate map (see [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://dx.doi.org/10.1523%2FJNEUROSCI.1704-07.2007))  
+- sdata.nfields - Scalar, number of place fields (regions greater than a set area and with a minimum peak firing rate)  
+- sdata.field_data - Nx9 cell array, N = number of fields, for each field: Area, Centroid, WeightedCentroid, MajorAxisLength, MinorAxisLength, Orientation, ConvexHull, PixelIdxList, MaxIntensity  
+- sdata.gridmap - NxM, spatial autocorrelation, calculated using firing rate map.  
+- sdata.grid_info - 1x3, grid score, grid wavelength, grid orientation, calculated using gridmap (see [here](https://doi.org/10.1126/science.1188210))  
+- sdata.grid_field_info - 1x6, field radius, major axis length, minimum axis length, height, width, orientation, calculated using the central peak of gridmap (see [here](https://doi.org/10.1073/pnas.1811867116))  
+- sdata.hd_ratemap - Nx1, where N = number of HD bins, head direction firing rate map  
+- sdata.hd_info - 1x4, Rayleigh vector length, preferred firing direction, mean angle, SD angle, calculated using hd_ratemap (see [here](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics))  
+- sdata.hd_ratemap_half - Nx1 x two columns, where N = number of HD bins, head direction firing rate map for each half of the session (median split)  
+- sdata.hd_info_half - 1x8, Rayleigh vector length, preferred firing direction, mean angle, SD angle repeated twice - once for each session half in hd_ratemap_half (see [here](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics))  
+- sdata.spatial_info_z - 1x3, spatial information (b/s), grid score and Rayleigh vector length, z-scored relative to a shuffle using the Savelli method (see [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://elifesciences.org/articles/21354))  
+- sdata.spatial_info_p - 1x3, spatial information (b/s), grid score and Rayleigh vector length, p-values calculated using a shuffle using the Savelli method (see [here](https://doi.org/10.1002%2F%28SICI%291098-1063%281996%296%3A2%3C149%3A%3AAID-HIPO6%3E3.0.CO%3B2-K), [here](https://elifesciences.org/articles/21354))  
+- sdata.ahv_curve - Nx1, where N = number of AHV bins, angular head velocity x firing rate map  
+- sdata.theta_phase - 1xN, where N = number of theta phase bins, spike histogram relative to theta phase  
+- sdata.theta_info - 1x3, Rayleigh vector length, preferred phase (bin with max count), mean angle (average phase) of spike theta phases (see [here](https://uk.mathworks.com/matlabcentral/fileexchange/10676-circular-statistics-toolbox-directional-statistics))  
+- sdata.isi - 1xN, where N = number of interspike interval bins, histogram of interspike intervals  
+- sdata.isi_info - not used  
+- sdata.burst_index - proportion of ISIs less than 6ms (see [here](https://doi.org/10.1002/hipo.22002))  
+- sdata.autocorr_theta - Nx1, where N = number of autocorrelogram bins, large window autocorrelation (usually 500ms, 10ms bins)  
+- sdata.autocorr_refrac - Nx1, where N = number of autocorrelogram bins, small window autocorrelation (usually 50ms, 1ms bins)  
+- sdata.autocorr_refrac_info - 1x2, number of refractory period violations (ISIs less than 2ms), and the proportion of spikes with a refractory period less than 2ms (see [here](https://doi.org/10.1152/jn.00699.2015))  
+- sdata.speed_slope - 1xN, where N = number of speed bins, running speed x firing rate map (see [here](https://doi.org/10.1038/nature14622))  
+- sdata.speed_info - 1x3, speed score, slope of linear fit, y-intercept of linear fit (see [here](https://doi.org/10.1038/nature14622))  
+
+## bdata
+Alongside spikes and firing rate statistics, this function also stores position data and other session level data in Matlab table format (bdata.mat). This table contains different data types, some are integers while others are matrices or vectors. For convenience, this table is stored in the custom property field of sdata:
+```
+bdata = sdata.Properties.CustomProperties.bdata;
+```
+Each row of this table contains:
+- bdata.rat - String, the rat name, provided as an input ('rname') or assumed to be the last part of the current working directory, mainly included so data can be aligned with sdata  
+- bdata.date - String, the date of recording, extracted from recording files if possible, mainly included so data can be aligned with sdata  
+- bdata.partn - Scalar, the part number, given the parts specified in order at the beginning of the file, which part is this?, mainly included so data can be aligned with sdata  
+- bdata.dir - String, directory of the data, mainly included so data can be aligned with sdata  
+- bdata.pos - Nx7, where N = the number of position data points: time (s), x (cm), y (cm), head direction (deg), speed (cm/s), angular head velocity (deg/s), displacement (cm/s)
+- bdata.dwellmap - NxM, firing rate map (see [here](https://github.com/Neuroesc/rate_mapper.git), [here](https://doi.org/10.1371/journal.pcbi.1011763))  
+- bdata.hd_dwellmap - Nx1, where N = number of HD bins, head direction dwell time map (s)  
+- bdata.hd_dwellmap_half - Nx1 x two columns, where N = number of HD bins, head direction dwell time map for each half of the session (median split, s)  
+- bdata.ahv_dwellmap - Nx1, where N = number of AHV bins, angular head velocity x dwell time map (s)  
+- bdata.speed_dwell_time - 1xN, where N = number of speed bins, running speed x dwell time map (see [here](https://doi.org/10.1038/nature14622))  
+
+## pdata
+Additionally, klustest also stores session specific settings and data in Matlab structure format (pdata.mat). This struct is stored in the custom property field of sdata:  
+```
+pdata = sdata.Properties.CustomProperties.pdata;
+```
+This struct contains fields such as:  
+- pdata.rat - String, the rat name, provided as an input ('rname') or assumed to be the last part of the current working directory  
+- pdata.date - String, the date of recording, extracted from recording files if possible  
+- pdata.analysed - String, the date the data were last analysed using klustest  
+- pdata.directory - String, directory of the data  
+- pdata.tetrodes - Nx2, where N = number of electrodes, column 1 has the electrode number, column 2 contains the electrode type, 0 = tetrode, 1 = stereotrode  
+- pdata.sessions - Scalar, the number of recording sessions contributing to the merged file  
+- pdata.data_dirs - Nx1 cell array, directories of each of the recording sessions  
+- pdata.snames - Nx1 cell array, the names of each of the recording sessions (filename format)  
+- pdata.mapset - Structure, settings used to create firing rate maps and treat position data. Not all of these settings may be used. These parameters can be changed at the top of klustest and are stored in pdata for reference only.  
+   - pdata.ppm - pixels per meter    
+   - pdata.jumpcut - z-score to use when rejection jumps in position data  
+   - pdata.jumpwindow - time window over which to compute jumps    
+   - pdata.method - method for creating firing rate maps    
+   - pdata.binsize - bin size for firing rate maps    
+   - pdata.ssigma - smoothing strength for firing rate maps    
+   - pdata.padding - padding to use for firing rate maps    
+   - pdata.mindwell - minimum dwell time for a bin to be considered visited in firing rate maps    
+   - pdata.mindist - minimum distance a bin must be from position data to be considered visited in firing rate maps      
+   - pdata.smethod - smoothing method for firing rate maps    
+   - pdata.zcut - z-score cutoff to use when thresholding firing rate maps to detect place fields  
+   - pdata.frcut - minimum peak firing rate cutoff to use when excluding place fields  
+   - pdata.arcut - minimum field area to use when excluding place fields  
+   - pdata.fix_aspect - 1 means firing rate map etc are oriented with the long axis horizontal  
+   - pdata.wave_window - time window over which to show waveforms    
+   - pdata.hd_displace - if set to 1, will use displacement (movement direction) instead of head direction   
+   - pdata.hd_type - 'density' corresponds to a circular kolmogorov smirnov density estimate plot, 'histogram' corresponds to a traditional histogram polar plot  
+   - pdata.hd_bins - the number of bins to use when computing HD plot  
+   - pdata.hd_sigma - the standard deviation of the gaussian kernel used in HD circular density estimate  
+   - pdata.hd_boxcar - the number of bins over which to compute the HD histogram boxcar average  
+- pdata.cname - Name used for the merged cluster cutting output, usually kwiktint  
+- pdata.outname - Name to use for outputs and output directories, usually klustest  
+- pdata.pos - Nx7 table, position data for entire session: time (s), x (cm), y (cm), head direction (deg), speed (cm/s), angular head velocity (deg/s), displacement (cm/s)  
+- pdata.pos_srate - Sample rate of the position data (Hz)  
+- pdata.tstart - Start time of the entire recording, Neuralynx files have a a start time equal to the actual time, we need to zero this, this value retains the original start time  
+- pdata.clusters - Nx1 cell array, for each electrode, the cluster assignment of every spike  
+- pdata.spike_times - Nx1 cell array, for each electrode, the time of every spike (s)  
+- pdata.wavtime - 1xN, where N = spike samples, the time relative to the waveform peak, for plotting waveforms (i.e. the x-axis values for waveforms stored in sdata.wave_mean)  
+- pdata.part_config - Structure, copy of the part_config structure which is also saved as a .json file  
+- pdata.ahv_xvalues - 1xN, where N = number of AHV bins, bin positions for AHV (i.e. the x-axis values for AHV ratemaps in sdata.ahv_curve)  
+- pdata.isi_xvalues - 1xN, where N = number of interspike interval bins, bin positions for ISI histogram (i.e. the x-axis values for ISI histograms in sdata.isi)  
+- pdata.autocorr_theta_xvalues - 1xN, where N = number of autocorrelogram bins, bin positions for large window autocorrelogram (i.e. the x-axis values for autocorrelograms in sdata.autocorr_theta)  
+- pdata.autocorr_theta_evalues - 1xN, where N = number of autocorrelogram bins **+ 1**, bin **edges** for large window autocorrelogram  
+- pdata.autocorr_refrac_xvalues - 1xN, where N = number of autocorrelogram bins, bin positions for small window autocorrelogram (i.e. the x-axis values for autocorrelograms in sdata.autocorr_refrac)  
+- pdata.autocorr_refrac_evalues - 1xN, where N = number of autocorrelogram bins **+ 1**, bin **edges** for small window autocorrelogram  
+
