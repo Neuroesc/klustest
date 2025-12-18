@@ -170,7 +170,7 @@ function klustest(varargin)
 % version 20.0.3, Release 16/12/25 removed inset CDFs in isolation graph in klustfig_part
 % version 20.0.3, Release 16/12/25 updated filenames for cross platform flexibility
 % version 20.0.4, Release 17/12/25 fixed bug where incomplete cluster quality could be loaded
-% version 21.0.0, Release 17/12/25 readtable/writetable no longer viable for part_config, changing this to 'save' makes the code no longer backward compatible
+% version 21.0.0, Release 17/12/25 readtable/writetable no longer viable for part_config, changing this to a structure saved in a .json makes the code no longer backward compatible
 %
 % AUTHOR 
 % Roddy Grieves
@@ -318,14 +318,14 @@ function klustest(varargin)
     part_config.(part_name).method          = 2;
     part_config.(part_name).intervals       = [1];
     part_config.(part_name).interval_keys   = {};
-    part_name                               = 'session2';
-    part_config.(part_name).method          = 2;
-    part_config.(part_name).intervals       = [2 3 4 5 6];
-    part_config.(part_name).interval_keys   = {};
-    part_name                               = 'session3';
-    part_config.(part_name).method          = 2;
-    part_config.(part_name).intervals       = [7];
-    part_config.(part_name).interval_keys   = {};
+    % part_name                               = 'session2';
+    % part_config.(part_name).method          = 2;
+    % part_config.(part_name).intervals       = [2 3 4 5 6];
+    % part_config.(part_name).interval_keys   = {};
+    % part_name                               = 'session3';
+    % part_config.(part_name).method          = 2;
+    % part_config.(part_name).intervals       = [7];
+    % part_config.(part_name).interval_keys   = {};
 
     % add additonal information
     pnames = fieldnames(part_config);
