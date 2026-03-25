@@ -202,7 +202,7 @@ function get_combined_sdata(opts)
                         % has not been run on this session yet, we will run
                         % add_manual_cell_type just on this session    
                         if desired_run || forced_run % if we want or need to run add_manual_cell_type
-                            add_manual_cell_type; % run add_manual_cell_type with default settings
+                            add_manual_cell_type('data_dir',currentDir); % run add_manual_cell_type with default settings
                             fprintf('\tadd_manual_cell_type complete.\n');
                             if ~isempty(rval)
                                 analysis_log({['add_manual_cell_type' num2str(rval)]},1,'version',{'v0.0.0'});    
