@@ -9,13 +9,13 @@ Following automated or manual spike sorting using Klustakwik (see [kwiktint](htt
 > This function is intended to run after spike sorting using [kwiktint](https://github.com/Neuroesc/kwiktint).
 
 # Contents
-- [Specifying data 'parts'](https://github.com/Neuroesc/klustest/edit/main/README.md#specifying-data-parts)
-- [Usage](https://github.com/Neuroesc/klustest/edit/main/README.md#usage)
-- [Examples](https://github.com/Neuroesc/klustest/edit/main/README.md#examples)
-- [Parameters](https://github.com/Neuroesc/klustest/edit/main/README.md#parameters)
-- [Figure outputs](https://github.com/Neuroesc/klustest/edit/main/README.md#figure-outputs)
-- [Data outputs](https://github.com/Neuroesc/klustest/edit/main/README.md#data-outputs)
-- [Additional code](https://github.com/Neuroesc/klustest/main/README.md#additional-code)
+- [Specifying data 'parts'](https://github.com/Neuroesc/klustest/blob/main/README.md#specifying-data-parts)
+- [Usage](https://github.com/Neuroesc/klustest/blob/main/README.md#usage)
+- [Examples](https://github.com/Neuroesc/klustest/blob/main/README.md#examples)
+- [Parameters](https://github.com/Neuroesc/klustest/blob/main/README.md#parameters)
+- [Figure outputs](https://github.com/Neuroesc/klustest/blob/main/README.md#figure-outputs)
+- [Data outputs](https://github.com/Neuroesc/klustest/blob/main/README.md#data-outputs)
+- [Additional code](https://github.com/Neuroesc/klustest/blob/main/README.md#additional-code)
 
 # Specifying data 'parts'
 This function is assumed to follow spike sorting using [kwiktint](https://github.com/Neuroesc/kwiktint). Kwiktint can merge multiple recording sessions into one output. Klustest can redivide the data back up into indiviual sessions or 'parts' for analysis and visualisation.
