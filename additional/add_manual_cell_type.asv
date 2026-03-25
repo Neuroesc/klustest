@@ -1,6 +1,6 @@
 function add_manual_cell_type(opts)
-% name short description
-% longer description
+% add_manual_cell_type code to add cell type identification to sdata
+% This function loads an sd
 %
 % USAGE
 %
@@ -125,35 +125,31 @@ function add_manual_cell_type(opts)
             if frate < rate_max % if the cell's firing rate does not exceed the maximum
                 if wow > width_cutoff % if the cell has a pyramidal waveform
                     cell_type = 2; % pyramidal
-                    cols{1} = 'w';
+                    cols = {'w','w','w','w','w','w','w'}; % for plotting later        
                     cols{2} = 'g';
                     if spat>spatial_cutoff % if the pyramidal cell is spatial
                         cell_type = 3; % place cell
-                        cols{1} = 'w';   
-                        cols{2} = 'w';                        
+                        cols = {'w','w','w','w','w','w','w'}; % for plotting later                              
                         cols{3} = 'g';
                     end                     
                 else
                     cell_type = 6; % low firing interneuron
-                    cols{1} = 'w';                    
+                    cols = {'w','w','w','w','w','w','w'}; % for plotting later                          
                     cols{6} = 'g';
                 end   
             else
                 cell_type = 6; % high firing interneuron
-                                cols = {'w','w','w','w','w','w','w'}; % for plotting later        
-                cols{1} = 'w';                    
+                cols = {'w','w','w','w','w','w','w'}; % for plotting later                          
                 cols{6} = 'g';                
             end
             if gscore>grid_cutoff % if the grid score is significant
                 cell_type = 4; % high firing interneuron     
-                cols = {'w','w','w','w','w','w','w'}; % for plotting later        
-                cols{1} = 'w';                    
+                cols = {'w','w','w','w','w','w','w'}; % for plotting later                          
                 cols{4} = 'g';                
             end 
             if rayv>hd_cutoff % if the rayleigh vector is significant
                 cell_type = 5; % high firing interneuron     
-                cols = {'w','w','w','w','w','w','w'}; % for plotting later        
-                cols{1} = 'w';                    
+                cols = {'w','w','w','w','w','w','w'}; % for plotting later                          
                 cols{5} = 'g';                
             end
         end

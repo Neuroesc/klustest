@@ -1,39 +1,36 @@
 function add_manual_cell_type(opts)
-% name short description
-% longer description
+% add_manual_cell_type code to add cell type identification to sdata
+% This function loads an sdata and provides an interactive way to plot each
+% cluster and allow the user to identify the cell's type (head direction, place,
+% etc).
 %
 % USAGE
 %
-% out = name(in) process with default settings
+% get_combined_sdata process with default settings
 %
-% out = name(in,optional) process using optional argument 1
-%
-% out = rate_mapper(__,name,value) process with Name-Value pairs 
+% get_combined_sdata(__,name,value) process with Name-Value pairs (see below)
 %
 % INPUT
 %
-% 'in' - Scalar, positive integer that specifies X
-%       units are in Y.
-%       Default value is Z.
+% 'data_dir' - String, directory of the recording we want to add info to
 %
 % OUTPUT
 %
-% 'out' - Scalar, positive integer that specifies X
-%       units are in Y.
-%       Default value is Z.
+% the modified sdata is saved automatically
 %
 % NOTES
-% 1. 
+% 1. data_dir should be the upper directory containing the recording files
 %
-% 2. 
+% 2. add_manual_cell_type only functions for files on which klustest has already
+%   been run as it requires an existing sdata to modify
 %
 % EXAMPLE
 % 
-% SEE ALSO NAME, NAME
+% SEE ALSO klustest
 
 % HISTORY
 %
-% version 1.0.0, Release 00/00/26 Initial release
+% version 1.0.0, Release 25/03/26 Initial release
 %
 % AUTHOR 
 % Roddy Grieves
@@ -45,12 +42,7 @@ function add_manual_cell_type(opts)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INPUTS
 %%%%%%%%%%%%%%%% ARGUMENT CHECK
     arguments
-        opts.combine_sdata          logical = false
-        opts.master_sdata           double = []
-        opts.master_bdata           double = []  
         opts.data_dir               string = pwd
-        opts.klustest               logical = false
-        opts.template               logical = false
     end
 
     % settings
