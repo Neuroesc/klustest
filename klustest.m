@@ -185,7 +185,7 @@ function klustest(varargin)
     addParameter(p,'tetrodes',1:16,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x));  
     addParameter(p,'clusters',0,@(x) ~isempty(x) && ~all(isnan(x(:))) && isnumeric(x)); 
     addParameter(p,'screening',0,@(x) ~isscalar(x) && isnumeric(x));     
-    addParameter(p,'cname','kwiktint',@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x)); 
+    addParameter(p,'cname','kwiktint',@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x));
     addParameter(p,'outname','klustest',@(x) ~isempty(x) && ~all(isnan(x(:))) && ischar(x));     
     dlist = strsplit(pwd,filesep);
     rname = dlist{end-1};

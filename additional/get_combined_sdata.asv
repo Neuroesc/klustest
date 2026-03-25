@@ -1,0 +1,296 @@
+function get_combined_sdata(opts)
+% get_combined_sdata run through and analyse data directories
+% Code to run through a set of project directories and run sets of analyses,
+% such as klustest, on every directory, or allow the user to perform cell typing
+% etc. Includes templates for easy user personalisation.
+%
+% USAGE
+%
+% get_combined_sdata process with default settings
+%
+% get_combined_sdata(__,name,value) process with Name-Value pairs (see below)
+%
+% INPUT
+%
+% 'combine_sdata' - Logical, set to true to combine sdatas from every recording session
+%       Default is false
+%
+% 'master_sdata' - Table, will be concatenated with session sdatas to produce a
+%       master dataset, this option allows the user to provide a partial table
+%       which will be added to. This table must match the sdatas to be combined
+%       perfectly in terms of columns.
+%       Default is an empty table
+%
+% 'master_bdata' - Table, will be concatenated with session bdatas to produce a
+%       master dataset, this option allows the user to provide a partial table
+%       which will be added to. This table must match the bdatas to be combined
+%       perfectly in terms of columns.
+%       Default is an empty table
+%
+% 'data_dir' - String, directory of the project (uppermost) directory, see notes
+%       Default is pwd
+%
+% 'klustest' - Logical, set to true to run klustest on every recording session
+%       Default is false
+%
+% 'cell_typing' - Logical, set to true to run cell typing routine on every recording session
+%       Default is false
+%
+% OUTPUT
+%
+% 'master_sdata' and 'master_bdata' will be assigned into the base workspace if
+% these are produced during running the code.
+%
+% NOTES
+% 1. This code expects data to be arranged in the directory structure:
+%   project > experiment > rat > date
+%   where project is the overall project you want to combine the data for,
+%   experiments are the sub experiments conducted as part of this project that
+%   you want to combine, rats are the animals you want to be combined, and dates
+%   are recording sessions which are each saved in their own directory.
+%   The input data_dir, which defaults to the current working directory, should
+%   be the project directory.
+%
+% 2. 
+%
+% EXAMPLE
+% 
+% SEE ALSO klustest, add_manual_cell_type
+
+% HISTORY
+%
+% version 1.0.0, Release 25/03/26 Initial release
+%
+% AUTHOR 
+% Roddy Grieves
+% University of Glasgow, Sir James Black Building
+% Neuroethology and Spatial Cognition Lab
+% eMail: roddy.grieves@glasgow.ac.uk
+% Copyright 2026 Roddy Grieves
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INPUTS
+%%%%%%%%%%%%%%%% ARGUMENT CHECK
+    arguments
+        opts.combine_sdata          logical = false
+        opts.master_sdata           double = []
+        opts.master_bdata           double = []  
+        opts.data_dir               string = pwd
+        opts.klustest               logical = false
+        opts.cell_typing            logical = false        
+        opts.template               logical = false
+    end
+    master_sdata = opts.master_sdata;
+    master_bdata = opts.master_bdata;    
+
+    % directories we want to ignore when running
+    excludedDirs = {'unused', 'Unused', '.', '..', 'testing','habituation'};
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FUNCTION BODY
+    % Parent directory
+    parentDir = opts.data_dir;
+    cd(parentDir);
+    
+    % Get a list of all experiment directories in the parent directory
+    proDirs = dir(parentDir);
+    proDirs = proDirs([proDirs.isdir]); % Keep only directories
+    
+    % Exclude 'unused' and 'Unused' directories etc
+    proDirs = proDirs(~ismember({proDirs.name}, excludedDirs));
+    
+    % waitbar
+    progressbar('Project','Experiment','Rat','Date','Cluster');
+
+    % Loop through the experiment directories
+    save_master_sdata = false;
+    for aa = 1:length(proDirs) % for every project directory
+        currentDir = fullfile(parentDir,proDirs(aa).name);
+    
+        % Get a list of all experiment specific directories
+        expDirs = dir(currentDir);
+        expDirs = expDirs([expDirs.isdir]); % Keep only directories
+        expDirs = expDirs(~ismember({expDirs.name}, excludedDirs));
+    
+        % Loop through the experiment specific directories
+        for bb = 1:length(expDirs) % for every experiment directory
+            currentDir = fullfile(parentDir,proDirs(aa).name,expDirs(bb).name);
+
+            % Get a list of all rat directories
+            ratDirs = dir(currentDir);
+            ratDirs = ratDirs([ratDirs.isdir]); % Keep only directories
+            ratDirs = ratDirs(~ismember({ratDirs.name}, excludedDirs));
+        
+            % Loop through the rat specific directories
+            for rr = 1:length(ratDirs) % for every rat directory
+                currentDir = fullfile(parentDir, proDirs(aa).name, expDirs(bb).name, ratDirs(rr).name);
+
+                % Get a list of all date directories
+                dateDirs = dir(currentDir);
+                dateDirs = dateDirs([dateDirs.isdir]); % Keep only directories
+                dateDirs = dateDirs(~ismember({dateDirs.name}, excludedDirs));
+            
+                % Loop through the date directories
+                for dd = 1:length(dateDirs) % for every recording directory
+                    currentDir = fullfile(parentDir, proDirs(aa).name, expDirs(bb).name, ratDirs(rr).name, dateDirs(dd).name);
+
+                    fprintf('Directory: %s\n',currentDir);
+                    cd(currentDir);
+
+%%%%%%%%%%%%%%%% Code to run on every recording session goes here
+                    % see template code section at end of code
+
+                    %%%%%%%%%%% run klustest
+                    forced_run = false; % force running klustest
+                    rval = []; % set to a number if you want a unique identifier for a klustest run
+                    % e.g. if you set to 1, a line will be added to analysis 
+                    % log files with the log 'klustest1'  and future rounds of 
+                    % this code will skip sessions containing this line, then,
+                    % rval can be changed to a new number (i.e. '2') to restart
+                    % the process. This is useful if you need to overwrite an
+                    % old klustest analysis but need to keep track of which
+                    % sessions have been analysed with the new code
+                    if opts.klustest
+                        % first we will test if analysis_log files contain a log
+                        % of klustest being run, if it has been run on this
+                        % session already, and we are not forcing an overwrite,
+                        % it will skip this session
+                        alog_name = fullfile(currentDir, '_analysis_log.txt'); % location of the analysis log file produced by klustest and other functions
+                        desired_run = true; % we will run klustest by default
+                        if exist(alog_name,'file') && ~forced_run % if the analysis log file exists and we are not forcing klustest to run
+                            alog = readtable(alog_name,'FileType','text','ReadVariableNames',1,'VariableNamingRule','preserve','Delimiter','\t');
+                            if any( strcmp(alog.analysis,{['klustest' num2str(rval)]}) ) % if the analysis log already contains a log of klustest being run
+                                disp(sprintf('\talready analysed... skipping')) % display this   
+                                desired_run = false; % set klustest to not bother running
+                            end                            
+                        end
+                        % next, if we want to force an overwrite or oif klustest
+                        % has not been run on this session yet, we will run
+                        % klustest just on this session
+                        if desired_run || forced_run % if we want or need to run klustest
+                            klustest; % run klustest with default settings
+                            fprintf('\tklustest complete.\n');
+                            if ~isempty(rval)
+                                analysis_log({['klustest' num2str(rval)]},1,'version',{'v0.0.0'});    
+                            end
+                        end
+                    end
+
+                    %%%%%%%%%%% manual and automated cell typing
+                    forced_run = false; % force running add_manual_cell_type
+                    rval = []; % set to a number if you want a unique identifier for a klustest run
+                    % e.g. if you set to 1, a line will be added to analysis 
+                    % log files with the log 'klustest1'  and future rounds of 
+                    % this code will skip sessions containing this line, then,
+                    % rval can be changed to a new number (i.e. '2') to restart
+                    % the process. This is useful if you need to overwrite an
+                    % old klustest analysis but need to keep track of which
+                    % sessions have been analysed with the new code
+                    if opts.cell_typing
+                        % first we will test if analysis_log files contain a log
+                        % of add_manual_cell_type being run, if it has been run on this
+                        % session already, and we are not forcing an overwrite,
+                        % it will skip this session
+                        alog_name = fullfile(currentDir, '_analysis_log.txt'); % location of the analysis log file produced by add_manual_cell_type and other functions
+                        desired_run = true; % we will run add_manual_cell_type by default
+                        if exist(alog_name,'file') && ~forced_run % if the analysis log file exists and we are not forcing add_manual_cell_type to run
+                            alog = readtable(alog_name,'FileType','text','ReadVariableNames',1,'VariableNamingRule','preserve','Delimiter','\t');
+                            if any( strcmp(alog.analysis,{['add_manual_cell_type' num2str(rval)]}) ) % if the analysis log already contains a log of add_manual_cell_type being run
+                                disp(sprintf('\talready analysed... skipping')) % display this   
+                                desired_run = false; % set add_manual_cell_type to not bother running
+                            end                            
+                        end
+                        % next, if we want to force an overwrite or if add_manual_cell_type
+                        % has not been run on this session yet, we will run
+                        % add_manual_cell_type just on this session    
+                        if desired_run || forced_run % if we want or need to run add_manual_cell_type
+                            add_manual_cell_type; % run add_manual_cell_type with default settings
+                            fprintf('\ttemplate complete.\n');
+                            if ~isempty(rval)
+                                analysis_log({['klustest' num2str(rval)]},1,'version',{'v0.0.0'});    
+                            end
+                        end
+                    end
+
+
+
+
+
+
+                    %%%%%%%%%%% accumulate sdata tables
+                    if opts.combine_sdata      
+                        cd(currentDir);
+                        load(fullfile(currentDir, 'klustest', 'sdata.mat'),'sdata');
+                        bdata = sdata.Properties.CustomProperties.bdata;
+                        % pdata = sdata.Properties.CustomProperties.pdata; % unused but might contain useful info
+
+                        % keyboard
+                        if isempty(master_sdata)
+                            master_sdata = sdata;
+                        else
+                            master_sdata = [master_sdata; sdata];
+                        end
+                        if isempty(master_bdata)
+                            master_bdata = bdata;
+                        else
+                            master_bdata = [master_bdata; bdata];
+                        end
+                        save_master_sdata = true;
+                    end
+
+%%%%%%%%%%%%%%%% Code to run on every recording session goes above
+                    progressbar([],[],[],dd/length(dateDirs),[]);
+                end  
+                progressbar([],[],rr/length(ratDirs),[],[]);
+            end  
+            progressbar([],bb/length(expDirs),[],[],[]);
+        end
+        progressbar(aa/length(proDirs),[],[],[],[]);
+    end
+
+    if save_master_sdata     
+        disp(sprintf('\tsaving master_sdata & master_bdata...')) % display this   
+        save(fullfile(opts.data_dir, 'master_sdata.mat'),'master_sdata',"-v7.3");
+        disp(sprintf('\t...sdata saved')) % display this   
+        save(fullfile(opts.data_dir, 'master_bdata.mat'),'master_bdata',"-v7.3");
+        disp(sprintf('\t...bdata saved')) % display this  
+        assignin('base','master_sdata',master_sdata); 
+        assignin('base','master_bdata',master_bdata);
+    end
+    cd(parentDir);
+
+
+% %%%%%%%%%%% template - use this as a template for running code
+% forced_run = false; % force running template
+% rval = []; % set to a number if you want a unique identifier for a klustest run
+% % e.g. if you set to 1, a line will be added to analysis 
+% % log files with the log 'klustest1'  and future rounds of 
+% % this code will skip sessions containing this line, then,
+% % rval can be changed to a new number (i.e. '2') to restart
+% % the process. This is useful if you need to overwrite an
+% % old klustest analysis but need to keep track of which
+% % sessions have been analysed with the new code
+% if opts.template
+%     % first we will test if analysis_log files contain a log
+%     % of template being run, if it has been run on this
+%     % session already, and we are not forcing an overwrite,
+%     % it will skip this session
+%     alog_name = fullfile(currentDir, '_analysis_log.txt'); % location of the analysis log file produced by template and other functions
+%     desired_run = true; % we will run template by default
+%     if exist(alog_name,'file') && ~forced_run % if the analysis log file exists and we are not forcing template to run
+%         alog = readtable(alog_name,'FileType','text','ReadVariableNames',1,'VariableNamingRule','preserve','Delimiter','\t');
+%         if any( strcmp(alog.analysis,{['template' num2str(rval)]}) ) % if the analysis log already contains a log of template being run
+%             disp(sprintf('\talready analysed... skipping')) % display this   
+%             desired_run = false; % set template to not bother running
+%         end                            
+%     end
+%     % next, if we want to force an overwrite or if template
+%     % has not been run on this session yet, we will run
+%     % template just on this session    
+%     if desired_run || forced_run % if we want or need to run template
+%         template; % run template with default settings
+%         fprintf('\ttemplate complete.\n');
+%         if ~isempty(rval)
+%             analysis_log({['klustest' num2str(rval)]},1,'version',{'v0.0.0'});    
+%         end
+%     end
+% end
+% 
