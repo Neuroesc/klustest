@@ -15,6 +15,7 @@ Following automated or manual spike sorting using Klustakwik (see [kwiktint](htt
 - [Parameters](https://github.com/Neuroesc/klustest/edit/main/README.md#parameters)
 - [Figure outputs](https://github.com/Neuroesc/klustest/edit/main/README.md#figure-outputs)
 - [Data outputs](https://github.com/Neuroesc/klustest/edit/main/README.md#data-outputs)
+- [Additional code](https://github.com/Neuroesc/klustest/edit/main/README.md#additional-code)
 
 # Specifying data 'parts'
 This function is assumed to follow spike sorting using [kwiktint](https://github.com/Neuroesc/kwiktint). Kwiktint can merge multiple recording sessions into one output. Klustest can redivide the data back up into indiviual sessions or 'parts' for analysis and visualisation.
@@ -263,8 +264,33 @@ This struct contains fields such as:
 - pdata.part_config - Structure, copy of the part_config structure which is also saved as a .json file  
 - pdata.ahv_xvalues - 1xN, where N = number of AHV bins, bin positions for AHV (i.e. the x-axis values for AHV ratemaps in sdata.ahv_curve)  
 - pdata.isi_xvalues - 1xN, where N = number of interspike interval bins, bin positions for ISI histogram (i.e. the x-axis values for ISI histograms in sdata.isi)  
-- pdata.autocorr_theta_xvalues - 1xN, where N = number of autocorrelogram bins, bin positions for large window autocorrelogram (i.e. the x-axis values for autocorrelograms in sdata.autocorr_theta)  
+- pdata.autocorr_theta_xvalues - 1xN, where N = number of autocorrelogram bins, bin positions for large window autocorrelogram (i.e. the x-axis values for autocorrelograms in sdata.autocorr_theta)
 - pdata.autocorr_theta_evalues - 1xN, where N = number of autocorrelogram bins **+ 1**, bin **edges** for large window autocorrelogram  
 - pdata.autocorr_refrac_xvalues - 1xN, where N = number of autocorrelogram bins, bin positions for small window autocorrelogram (i.e. the x-axis values for autocorrelograms in sdata.autocorr_refrac)  
-- pdata.autocorr_refrac_evalues - 1xN, where N = number of autocorrelogram bins **+ 1**, bin **edges** for small window autocorrelogram  
+- pdata.autocorr_refrac_evalues - 1xN, where N = number of autocorrelogram bins **+ 1**, bin **edges** for small window autocorrelogram
+
+# Additional code
+Some additional code is provided in the 'additional' directory which can be used to aid analysis.
+
+## get_combined_sdata.m 
+Can be used to combine multiple sdata tables (the output of Klustest) into one merged dataset. This merged dataset can be useful when analysing the overall results of a project. However it can also be used to run any general functions on every recording session in a dataset. This can be very useful if you would like to rerun kwiktint or klustest on your entire dataset.
+  - This function expects data to be arranged in a specific file format:  
+``project > experiment > rat > date``
+  - 'project' is the overall project you want to combine the data from, 'experiments' are the sub experiments conducted as part of this project that you want to combine, 'rats' are the animals you want to be combined, and 'dates' are recording sessions which are each saved in their own directory. I would recommend using numeric date formats for the 'dates' directories, formatted YYYYMMDD.  
+  - The input data_dir to get_combined_sdata (which defaults to the current working directory) should be the topmost project directory.  
+> [!NOTE]
+> get_combined_sdata will only work on data that has already been analysed using klustest, as it can only combine existing sdata tables
+
+## add_manual_cell_type.m 
+Can be used to automatically and manually add cell type identifications to all clusters in an sdata. Combined with get_combined_sdata, this code can be used to manually identify cells throughout an entire dataset, allowing easy filtering later by curated cell type.  
+- This function is intended to be used in combination with get_combined_sdata, but you can also run it on any single recording directory - or direct it to a recording directory using the data_dir Name-Value input
+> [!NOTE]
+> add_manual_cell_type will only work on data that has already been analysed using klustest, as it can only add info to an existing sdata table
+
+<img width="1808" height="767" alt="image" src="https://github.com/user-attachments/assets/fdf7da4b-9cf0-4cf6-863e-d0da4ac68b2f" />
+
+When run, add_manual_cell_type moved through each cluster and presents the user with an interactive plot. This shows the spike plot, firing rate map, spatial autocorrelogram, head direction tuning curve, waveform, refractory period spike autocorrelogram and theta modulation spike autocorrelogram (see figure). There are also buttons providing the main cell type options that can be used as categories. The automated cell identification is shown by the green highlighted button.  
+  - Both the automated cell type and manually curated cell type are saved into a new column of sdata  
+  - Because this information is added to a new column, sdatas with no cell typing and sdatas with cell typing cannot be merged unless an empty cell type column is added to the former first  
+
 
