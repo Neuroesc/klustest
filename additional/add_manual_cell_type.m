@@ -187,7 +187,7 @@ function add_manual_cell_type(opts)
             pspx = pos.pox(sdata.spt_pot_index{idx});
             pspy = pos.poy(sdata.spt_pot_index{idx});
             ratemap = sdata.ratemap{idx};
-            amap = sdata.gridmap{idx};           
+            amap = sdata.gridmap{idx};
 
 %%%%%%%%%%%%%%%% Positions and spikes
             xnow = xmin;
