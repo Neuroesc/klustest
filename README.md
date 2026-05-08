@@ -8,6 +8,9 @@ Following automated or manual spike sorting using Klustakwik (see [kwiktint](htt
 > [!IMPORTANT]
 > This function is intended to run after spike sorting using [kwiktint](https://github.com/Neuroesc/kwiktint).
 
+> [!IMPORTANT]
+> This function has dependencies in [general_matlab_functions](https://github.com/Neuroesc/general_matlab_functions) and [rate_mapper](https://github.com/Neuroesc/rate_mapper)
+
 # Contents
 - [Specifying data 'parts'](https://github.com/Neuroesc/klustest/blob/main/README.md#specifying-data-parts)
 - [Usage](https://github.com/Neuroesc/klustest/blob/main/README.md#usage)
