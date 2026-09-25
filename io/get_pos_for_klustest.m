@@ -45,6 +45,7 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
 % version 1.0.2, Release 29/11/25 Updates for GitHub release
 % version 1.0.3, Release 16/12/25 updated filenames for cross platform flexibility
 % version 1.0.4, Release 16/12/25 improved comments, not ideal but detailed enough for now
+% version 1.0.5, Release 04/09/26 fixed bug where no 2nd LED led to all position data = NaN
 %
 % AUTHOR 
 % Roddy Grieves
@@ -73,10 +74,10 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                 disp(sprintf('\t\t loading'))
                 switch dataformat
                     case {'kwiktint'}
-                        [~,b,~] = fileparts(data_dirs{ff});
-                        h = get_dacq_headers([b '.pos']);
+                        [a,b,~] = fileparts(data_dirs{ff});
+                        h = get_dacq_headers([a '\' b '.pos']);
   
-                        [led_pos,potn,~] = read_rawpos([b '.pos'],2);
+                        [led_pos,potn,~] = read_rawpos([a '\' b '.pos'],2);
                         potn = potn + total_duration;
                         total_duration = total_duration + h.duration;
 
@@ -177,7 +178,7 @@ function [pos,data_intervals,tstart] = get_pos_for_klustest(formats,data_dirs,sn
                 % head direction
                 p1 = tdata2(:,cindx(formats.front_led_color,:)); % front LED data
                 p2 = tdata2(:,cindx(formats.back_led_color,:)); % back LED data
-                p3 = [mean([p1(:,1) p2(:,1)],2) mean([p1(:,2) p2(:,2)],2)]; % average position of the LEDs
+                p3 = [mean([p1(:,1) p2(:,1)],2,'omitmissing') mean([p1(:,2) p2(:,2)],2,'omitmissing')]; % average position of the LEDs
     
                 % the animal's azimuth is defined by the line from the back LED to the front LED
                 % i.e. the vector which points directly 'front-to-back' along the LED array

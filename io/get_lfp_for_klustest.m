@@ -70,8 +70,8 @@ function [dat,lfp_srate] = get_lfp_for_klustest(dataformat,data_dirs,tstart,ds)
             total_duration = 0;
     
             for ff = 1:length(data_dirs) % for every data directory  
-                [~,b,~] = fileparts(data_dirs{ff});          
-                fname_eeg = [b '.eeg']; % the file name 
+                [a,b,~] = fileparts(data_dirs{ff});          
+                fname_eeg = [a '\' b '.eeg']; % the file name 
                 % fname_egf = [b '\' b '.egf']; % the file name 
     
                 if ds
